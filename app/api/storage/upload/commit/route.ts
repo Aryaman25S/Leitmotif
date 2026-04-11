@@ -1,11 +1,8 @@
 /**
  * POST /api/storage/upload/commit
  *
- * Receives a file upload as multipart/form-data and saves it locally.
+ * Receives a file upload as multipart/form-data and saves it to R2 (or local disk in dev).
  * The client sends: { file: File, fileKey: string }
- *
- * TODO: In production, remove this route and upload directly to S3/R2 using
- *       pre-signed PUT URLs (no server middleman needed).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -32,7 +29,7 @@ export async function POST(req: NextRequest) {
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
-  saveFile(bucket, path.basename(filename), buffer)
+  await saveFile(bucket, path.basename(filename), buffer)
 
   return NextResponse.json({ ok: true, fileKey })
 }

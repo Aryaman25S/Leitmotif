@@ -1,14 +1,12 @@
 /**
- * Serves locally stored files (uploaded videos, generated mock cues).
- * Replaces Supabase Storage signed URLs.
- *
  * GET /api/files/<bucket>/<filename>
  *
- * TODO: In production, replace with a CDN or pre-signed S3/R2 URL redirect.
+ * In production (R2 configured): redirects to the public R2 URL.
+ * In local dev: serves files from disk.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getFilePath, fileExists } from '@/lib/storage'
+import { getFileUrl, getFilePath, fileExists } from '@/lib/storage'
 import fs from 'fs'
 import path from 'path'
 
@@ -27,7 +25,12 @@ export async function GET(
   const { path: segments } = await params
   const fileKey = segments.join('/')
 
-  if (!fileExists(fileKey)) {
+  const r2Url = getFileUrl(fileKey)
+  if (r2Url.startsWith('http')) {
+    return NextResponse.redirect(r2Url, { status: 302, headers: { 'Cache-Control': 'public, max-age=3600' } })
+  }
+
+  if (!(await fileExists(fileKey))) {
     return new NextResponse('File not found', { status: 404 })
   }
 
