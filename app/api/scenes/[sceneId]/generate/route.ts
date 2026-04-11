@@ -2,12 +2,10 @@
  * POST /api/scenes/[sceneId]/generate
  *
  * Creates a GenerationJob and kicks off background generation.
- * Previously used Inngest; now runs async in the same process.
- *
- * TODO: Move the async work to a proper queue (Inngest, BullMQ, etc.) in production.
+ * Uses Next.js after() to keep the serverless function alive after responding.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import {
   getIntent,
   getSceneCard,
@@ -22,6 +20,8 @@ import {
 import { generateWithStableAudio } from '@/lib/generation/stableAudio'
 import { saveFile } from '@/lib/storage'
 import { getMockUser } from '@/lib/mock-auth'
+
+export const maxDuration = 60
 
 export async function POST(
   req: NextRequest,
@@ -47,7 +47,6 @@ export async function POST(
   const scene = await getSceneCard(sceneId)
   const durationSec = Math.min(Math.max(scene?.video_duration_sec ?? 60, 5), 190)
 
-  // Create the job record (queued)
   const job = await createJob({
     scene_card_id: sceneId,
     intent_version_id: intentVersionId,
@@ -64,11 +63,12 @@ export async function POST(
 
   await updateSceneCard(sceneId, { status: 'generating' })
 
-  // ── Fire-and-forget background generation ────────────────────────────────
-  // This runs after the response is sent. In production use a real queue.
-  runGenerationAsync(job.id, sceneId, intent.positive_prompt, intent.negative_prompt ?? '', durationSec, scene?.label ?? 'scene', intentVersionId, user.id).catch(
-    (err) => console.error('[generate] Unhandled error:', err)
-  )
+  after(async () => {
+    await runGenerationAsync(
+      job.id, sceneId, intent.positive_prompt!, intent.negative_prompt ?? '',
+      durationSec, scene?.label ?? 'scene', intentVersionId, user.id
+    )
+  })
 
   return NextResponse.json({ jobId: job.id })
 }
@@ -96,7 +96,7 @@ async function runGenerationAsync(
     const versionNumber = existingCues.length + 1
     const safeLabel = sceneLabel.replace(/[^a-zA-Z0-9_\-]/g, '_')
     const fileName = `${safeLabel}_mock_v${versionNumber}_REFERENCE_ONLY.wav`
-    const fileKey = saveFile('mock-cues', `${sceneId}_${uid()}.wav`, audioBuffer)
+    const fileKey = await saveFile('mock-cues', `${sceneId}_${uid()}.wav`, audioBuffer)
 
     await createMockCue({
       generation_job_id: jobId,

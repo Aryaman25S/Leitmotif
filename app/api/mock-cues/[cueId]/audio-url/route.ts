@@ -1,10 +1,7 @@
 /**
  * GET /api/mock-cues/[cueId]/audio-url
  *
- * Returns a URL to the mock cue audio file.
- * Previously returned a Supabase Storage signed URL; now returns a local /api/files/... URL.
- *
- * TODO: In production, return a pre-signed CDN URL instead.
+ * Returns a URL to the mock cue audio file (R2 public URL or local dev path).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -20,8 +17,8 @@ export async function GET(
   const cue = await getMockCue(cueId)
   if (!cue) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (!fileExists(cue.file_key)) {
-    return NextResponse.json({ error: 'Audio file not found on disk' }, { status: 404 })
+  if (!(await fileExists(cue.file_key))) {
+    return NextResponse.json({ error: 'Audio file not found' }, { status: 404 })
   }
 
   return NextResponse.json({ url: getFileUrl(cue.file_key) })
