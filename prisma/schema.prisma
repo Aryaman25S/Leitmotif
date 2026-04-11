@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+  cancelled
+}
+
+// ── Models ────────────────────────────────────────────────────────────────────
+
+model Profile {
+  id           String   @id @default(uuid())
+  name         String?
+  email        String   @unique
+  role_default String?
+  created_at   DateTime @default(now())
+
+  projects            Project[]       @relation("owner")
+  project_members     ProjectMember[] @relation("member_profile")
+  mock_cue_approvals  MockCue[]       @relation("approver")
+}
+
+model Project {
+  id         String   @id @default(uuid())
+  title      String
+  format     String   @default("feature")
+  tone_brief String?
+  owner_id   String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  owner               Profile             @relation("owner", fields: [owner_id], references: [id])
+  scene_cards         SceneCard[]
+  generation_settings GenerationSettings?
+  project_members     ProjectMember[]
+}
+
+model GenerationSettings {
+  id                       String   @id @default(uuid())
+  project_id               String   @unique
+  instrumentation_families String[]
+  era_reference            String?
+  budget_reality           String?
+  do_not_generate          String?
+  model_provider           String   @default("stable_audio")
+  updated_at               DateTime @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model ProjectMember {
+  id              String    @id @default(uuid())
+  project_id      String
+  user_id         String?
+  role_on_project String
+  invite_email    String?
+  magic_token     String?
+  can_edit        Boolean   @default(true)
+  invited_at      DateTime  @default(now())
+  accepted_at     DateTime?
+
+  project Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  profile Profile? @relation("member_profile", fields: [user_id], references: [id])
+}
+
+model SceneCard {
+  id                    String   @id @default(uuid())
+  project_id            String
+  cue_number            String?
+  label                 String
+  sort_order            Int      @default(0)
+  tc_in_smpte           String?
+  tc_out_smpte          String?
+  picture_version_label String?
+  video_file_key        String?
+  video_duration_sec    Float?
+  status                String   @default("untagged")
+  created_at            DateTime @default(now())
+  created_by            String?
+
+  project         Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  intent_versions IntentVersion[]
+  generation_jobs GenerationJob[]
+  mock_cues       MockCue[]
+  comments        Comment[]
+}
+
+model IntentVersion {
+  id                      String    @id @default(uuid())
+  scene_card_id           String
+  version_number          Int
+  emotional_atmospheres   String[]
+  narrative_function      String?
+  density                 String?
+  director_words          String?
+  what_would_be_wrong     String?
+  handoff_setting         String?
+  diegetic_status         String?
+  frequency_note          String?
+  target_bpm              Int?
+  key_signature           String?
+  featured_instruments    String?
+  recording_quality       String?
+  working_title           String?
+  format_tag              String?
+  positive_prompt         String?
+  negative_prompt         String?
+  spec_tempo_range        String?
+  spec_harmonic_character String?
+  spec_density            String?
+  spec_register           String?
+  spec_dynamics           String?
+  spec_rhythm             String?
+  spec_instrumentation    String?
+  spec_do_not_use         String[]
+  spec_confirmed_by       String?
+  spec_confirmed_at       DateTime?
+  created_at              DateTime  @default(now())
+  created_by              String?
+
+  scene_card      SceneCard     @relation(fields: [scene_card_id], references: [id], onDelete: Cascade)
+  generation_jobs GenerationJob[]
+  mock_cues       MockCue[]
+}
+
+model GenerationJob {
+  id                String    @id @default(uuid())
+  scene_card_id     String
+  intent_version_id String
+  status            JobStatus @default(queued)
+  model_provider    String    @default("stable_audio")
+  positive_prompt   String
+  negative_prompt   String?
+  duration_sec      Float
+  error_message     String?
+  queued_at         DateTime  @default(now())
+  started_at        DateTime?
+  completed_at      DateTime?
+  created_by        String?
+
+  scene_card     SceneCard     @relation(fields: [scene_card_id], references: [id], onDelete: Cascade)
+  intent_version IntentVersion @relation(fields: [intent_version_id], references: [id])
+  mock_cues      MockCue[]
+}
+
+model MockCue {
+  id                       String    @id @default(uuid())
+  generation_job_id        String
+  scene_card_id            String
+  intent_version_id        String
+  version_number           Int
+  file_key                 String
+  file_name                String
+  duration_sec             Float
+  is_mock                  Boolean   @default(true)
+  is_approved              Boolean   @default(false)
+  approved_by              String?
+  approved_at              DateTime?
+  composer_acknowledged    Boolean   @default(false)
+  composer_acknowledged_at DateTime?
+  composer_notes           String?
+  created_at               DateTime  @default(now())
+
+  generation_job GenerationJob @relation(fields: [generation_job_id], references: [id])
+  scene_card     SceneCard     @relation(fields: [scene_card_id], references: [id], onDelete: Cascade)
+  intent_version IntentVersion @relation(fields: [intent_version_id], references: [id])
+  approver       Profile?      @relation("approver", fields: [approved_by], references: [id])
+}
+
+model Comment {
+  id            String   @id @default(uuid())
+  scene_card_id String
+  author_id     String?
+  body          String
+  created_at    DateTime @default(now())
+
+  scene_card SceneCard @relation(fields: [scene_card_id], references: [id], onDelete: Cascade)
+}
