@@ -13,7 +13,7 @@ async function main() {
     WHERE u.id IS NULL`
   console.log('Projects with missing Profile for owner_id:', orphans)
 
-  const profiles = await prisma.user.findMany({ select: { id: true, email: true } })
+  const profiles = await prisma.profile.findMany({ select: { id: true, email: true } })
   console.log('Profile count:', profiles.length, profiles.slice(0, 5))
 }
 

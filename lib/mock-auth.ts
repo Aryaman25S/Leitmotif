@@ -16,8 +16,3 @@ export function getMockUser(): Profile {
   return MOCK_USER
 }
 
-export function getMockSession() {
-  return {
-    user: MOCK_USER,
-  }
-}

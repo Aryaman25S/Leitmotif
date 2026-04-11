@@ -96,7 +96,6 @@ const sectionVariants = {
 
 interface SceneIntentEditorProps {
   sceneId: string
-  projectId: string
   initialIntent: IntentVersion | null
   durationSec: number
   genSettings: GenerationSettings | null
@@ -106,7 +105,6 @@ interface SceneIntentEditorProps {
 
 export default function SceneIntentEditor({
   sceneId,
-  projectId,
   initialIntent,
   durationSec,
   genSettings,
@@ -191,7 +189,6 @@ export default function SceneIntentEditor({
       budgetReality: genSettings?.budget_reality ?? null,
       toneBrief,
     },
-    durationSec
   )
 
   const musicalSpec = buildMusicalSpec(intentInput)

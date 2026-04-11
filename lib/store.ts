@@ -191,14 +191,6 @@ async function ensureMockUser() {
   })
 }
 
-// ── Profiles ──────────────────────────────────────────────────────────────────
-
-export async function getProfile(id: string): Promise<Profile | undefined> {
-  const p = await prisma.profile.findUnique({ where: { id } })
-  if (!p) return undefined
-  return { ...p, created_at: isoRequired(p.created_at) }
-}
-
 // ── Projects ──────────────────────────────────────────────────────────────────
 
 export async function getProjects(): Promise<Project[]> {
@@ -533,18 +525,6 @@ export async function getLatestJob(sceneCardId: string): Promise<GenerationJob |
     where: { scene_card_id: sceneCardId },
     orderBy: { queued_at: 'desc' },
   })
-  if (!job) return undefined
-  return {
-    ...job,
-    status: job.status as GenerationJob['status'],
-    queued_at: isoRequired(job.queued_at),
-    started_at: iso(job.started_at),
-    completed_at: iso(job.completed_at),
-  }
-}
-
-export async function getJob(id: string): Promise<GenerationJob | undefined> {
-  const job = await prisma.generationJob.findUnique({ where: { id } })
   if (!job) return undefined
   return {
     ...job,

@@ -80,7 +80,6 @@ function deriveBpm(atmospheres: string[], userBpm: number | null): string {
 export function buildGenerationPrompt(
   intent: IntentInput,
   global: GlobalSettings,
-  durationSec: number
 ): GenerationPrompt {
   const parts: string[] = []
 

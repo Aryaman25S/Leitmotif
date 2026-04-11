@@ -64,7 +64,6 @@ export default async function ScenePage({
         <div className="space-y-5">
           <SceneVideoUpload
             sceneId={sceneId}
-            projectId={projectId}
             videoUrl={videoUrl}
             durationSec={scene.video_duration_sec}
           />
@@ -75,7 +74,6 @@ export default async function ScenePage({
               intentContent={
                 <SceneIntentEditor
                   sceneId={sceneId}
-                  projectId={projectId}
                   initialIntent={latestIntent ?? null}
                   durationSec={scene.video_duration_sec ?? 60}
                   genSettings={genSettings ?? null}
@@ -102,9 +100,6 @@ export default async function ScenePage({
         <div className="lg:sticky lg:top-16">
           <GenerationWorkspace
             sceneId={sceneId}
-            projectId={projectId}
-            sceneLabel={scene.label}
-            videoUrl={videoUrl}
             mockCues={mockCues}
             latestJobStatus={(latestJob?.status ?? null) as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null}
             hasIntent={!!(latestIntent?.emotional_atmospheres?.length)}

@@ -8,14 +8,12 @@ import { toast } from 'sonner'
 
 interface SceneVideoUploadProps {
   sceneId: string
-  projectId: string
   videoUrl: string | null
   durationSec: number | null
 }
 
 export default function SceneVideoUpload({
   sceneId,
-  projectId,
   videoUrl: initialUrl,
   durationSec: initialDuration,
 }: SceneVideoUploadProps) {

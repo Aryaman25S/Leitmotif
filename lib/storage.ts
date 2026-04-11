@@ -38,10 +38,6 @@ export function fileExists(fileKey: string): boolean {
   return fs.existsSync(path.join(UPLOADS_DIR, fileKey))
 }
 
-export function readFile(fileKey: string): Buffer {
-  return fs.readFileSync(path.join(UPLOADS_DIR, fileKey))
-}
-
 /** Returns the URL path to serve the file via /api/files/... */
 export function getFileUrl(fileKey: string): string {
   return `/api/files/${fileKey}`

@@ -14,9 +14,6 @@ import { Loader2, RefreshCw, CheckCircle2, Wand2, ChevronDown, ChevronUp } from 
 
 interface GenerationWorkspaceProps {
   sceneId: string
-  projectId: string
-  sceneLabel: string
-  videoUrl: string | null
   mockCues: MockCue[]
   latestJobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   hasIntent: boolean
@@ -33,8 +30,6 @@ const STATUS_LABELS = {
 
 export default function GenerationWorkspace({
   sceneId,
-  projectId,
-  sceneLabel,
   mockCues: initialCues,
   latestJobStatus: initialJobStatus,
   hasIntent,
