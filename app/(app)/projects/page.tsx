@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { getProjects } from '@/lib/store'
+import { requireSessionUser } from '@/lib/auth'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,7 +16,8 @@ const FORMAT_META: Record<string, { label: string; Icon: typeof Film }> = {
 }
 
 export default async function ProjectsPage() {
-  const projects = await getProjects()
+  const user = await requireSessionUser()
+  const projects = await getProjects(user.id)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">

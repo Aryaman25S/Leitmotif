@@ -13,17 +13,25 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getMockUser } from '@/lib/mock-auth'
-import { uid } from '@/lib/store'
+import { getSessionUser } from '@/lib/auth'
+import { uid, getSceneCard } from '@/lib/store'
 import path from 'path'
 
 export async function POST(req: NextRequest) {
-  getMockUser() // ensures auth context exists
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { sceneId, fileName, contentType } = await req.json()
 
   if (!sceneId || !fileName || !contentType) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const scene = await getSceneCard(sceneId, user.id)
+  if (!scene) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const ext = path.extname(fileName).toLowerCase() || '.bin'

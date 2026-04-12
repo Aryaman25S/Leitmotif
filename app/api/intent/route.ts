@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createIntentVersion, updateSceneCard } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { createIntentVersion, getSceneCard, updateSceneCard } from '@/lib/store'
+import { getSessionUser } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
-  const user = getMockUser()
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await req.json()
 
   if (!body.scene_card_id) {
     return NextResponse.json({ error: 'scene_card_id required' }, { status: 400 })
+  }
+
+  const scene = await getSceneCard(body.scene_card_id, user.id)
+  if (!scene) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const iv = await createIntentVersion({

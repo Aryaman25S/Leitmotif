@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createProject, upsertGenerationSettings } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { getSessionUser } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
-  const user = getMockUser()
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { title, format, tone_brief } = await req.json()
 
   if (!title?.trim()) {

@@ -95,11 +95,11 @@ export default function GenerationWorkspace({
     if (!res.ok) {
       toast.error('Failed to approve cue')
     } else {
-      toast.success('Cue approved — open the brief link to share with your composer')
+      toast.success('Cue approved')
       setMockCues((prev) =>
         prev.map((c) => c.id === cueId
-          // approve this cue; un-approve any previously approved one so there's
-          // only ever one active brief at a time
+          // approve this cue; un-approve any previously approved one so there is
+          // only one active approved cue at a time
           ? { ...c, is_approved: true }
           : { ...c, is_approved: false }
         )
@@ -194,13 +194,13 @@ export default function GenerationWorkspace({
         />
       )}
 
-      {/* Approved cue — always visible so brief link stays accessible */}
+      {/* Approved cue — always visible for quick playback */}
       {approvedCue && approvedCue.id !== latestUnapproved?.id && (
         <div className="space-y-2">
           {latestUnapproved && <Separator />}
           <div className="flex items-center gap-2 bg-status-complete/5 rounded-lg p-3 -mx-1">
             <CheckCircle2 className="h-4 w-4 text-status-complete" />
-            <p className="text-xs font-medium">Approved — brief link ready to share</p>
+            <p className="text-xs font-medium">Approved cue</p>
           </div>
           <CueRow
             cue={approvedCue}
@@ -258,18 +258,13 @@ function CueRow({
       <AudioCuePlayer cue={cue} />
 
       {cue.is_approved ? (
-        <a
-          href={`/brief/${cue.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-xs underline text-muted-foreground hover:text-foreground"
-        >
-          Open composer brief (share this URL) →
-        </a>
+        <p className="text-xs text-center text-muted-foreground">
+          Cue approved.
+        </p>
       ) : (
         <div className="space-y-2">
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Unlocks the public brief page; email to the composer is not sent from Leitmotif yet.
+            Mark this version as approved for your project.
           </p>
           <Button
             onClick={onApprove}
@@ -285,7 +280,7 @@ function CueRow({
             ) : (
               <span className="inline-flex items-center gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Approve &amp; unlock brief link
+                Approve cue
               </span>
             )}
           </Button>

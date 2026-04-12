@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { getSceneCard, getProject, getLatestIntent, getGenerationSettings, getMockCues, getLatestJob, getComments } from '@/lib/store'
+import { requireSessionUser } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -19,17 +20,18 @@ export default async function ScenePage({
 }: {
   params: Promise<{ projectId: string; sceneId: string }>
 }) {
+  const user = await requireSessionUser()
   const { projectId, sceneId } = await params
 
-  const scene = await getSceneCard(sceneId)
+  const scene = await getSceneCard(sceneId, user.id)
   if (!scene || scene.project_id !== projectId) notFound()
 
-  const project = await getProject(projectId)
-  const latestIntent = await getLatestIntent(sceneId)
-  const genSettings = await getGenerationSettings(projectId)
-  const mockCues = await getMockCues(sceneId)
-  const latestJob = await getLatestJob(sceneId)
-  const comments = await getComments(sceneId) as (Comment & { author?: { name: string | null; email: string } | null })[]
+  const project = await getProject(projectId, user.id)
+  const latestIntent = await getLatestIntent(sceneId, user.id)
+  const genSettings = await getGenerationSettings(projectId, user.id)
+  const mockCues = await getMockCues(sceneId, user.id)
+  const latestJob = await getLatestJob(sceneId, user.id)
+  const comments = await getComments(sceneId, user.id) as (Comment & { author?: { name: string | null; email: string } | null })[]
 
   const videoUrl = scene.video_file_key ? getFileUrl(scene.video_file_key) : null
 

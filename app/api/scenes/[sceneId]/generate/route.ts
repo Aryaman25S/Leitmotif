@@ -12,7 +12,7 @@ import {
   createJob,
   updateSceneCard,
 } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { getSessionUser } from '@/lib/auth'
 import { runGenerationJob } from '@/lib/generation/runGenerationJob'
 import { inngest } from '@/inngest/client'
 
@@ -25,14 +25,17 @@ export async function POST(
   { params }: { params: Promise<{ sceneId: string }> }
 ) {
   const { sceneId } = await params
-  const user = getMockUser()
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { intentVersionId } = await req.json()
   if (!intentVersionId) {
     return NextResponse.json({ error: 'intentVersionId required' }, { status: 400 })
   }
 
-  const intent = await getIntent(intentVersionId)
+  const intent = await getIntent(intentVersionId, user.id)
   if (!intent || intent.scene_card_id !== sceneId) {
     return NextResponse.json({ error: 'Intent not found' }, { status: 404 })
   }
@@ -41,7 +44,11 @@ export async function POST(
     return NextResponse.json({ error: 'Intent has no generation prompt. Save intent first.' }, { status: 400 })
   }
 
-  const scene = await getSceneCard(sceneId)
+  const scene = await getSceneCard(sceneId, user.id)
+  if (!scene) {
+    return NextResponse.json({ error: 'Scene not found' }, { status: 404 })
+  }
+
   const durationSec = Math.min(Math.max(scene?.video_duration_sec ?? 60, 5), 190)
 
   const job = await createJob({

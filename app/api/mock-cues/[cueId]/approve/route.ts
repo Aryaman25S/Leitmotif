@@ -7,21 +7,24 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getMockCue, getMockCues, updateMockCue, updateSceneCard, now } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { getSessionUser } from '@/lib/auth'
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ cueId: string }> }
 ) {
   const { cueId } = await params
-  const user = getMockUser()
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const cue = await getMockCue(cueId)
+  const cue = await getMockCue(cueId, user.id)
   if (!cue) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Un-approve any previously approved cues for this scene so there is always
   // exactly one active brief at a time
-  const siblings = await getMockCues(cue.scene_card_id)
+  const siblings = await getMockCues(cue.scene_card_id, user.id)
   await Promise.all(
     siblings
       .filter((c) => c.is_approved && c.id !== cueId)

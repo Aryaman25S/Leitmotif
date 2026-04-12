@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { getProject, getSceneCards } from '@/lib/store'
+import { requireSessionUser } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
@@ -28,11 +29,12 @@ export default async function ProjectPage({
 }: {
   params: Promise<{ projectId: string }>
 }) {
+  const user = await requireSessionUser()
   const { projectId } = await params
-  const project = await getProject(projectId)
+  const project = await getProject(projectId, user.id)
   if (!project) notFound()
 
-  const scenes = await getSceneCards(projectId)
+  const scenes = await getSceneCards(projectId, user.id)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
