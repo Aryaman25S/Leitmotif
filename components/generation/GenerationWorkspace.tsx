@@ -343,11 +343,25 @@ function AudioCuePlayer({ cue }: { cue: MockCue }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     fetch(`/api/mock-cues/${cue.id}/audio-url`)
-      .then((r) => r.json())
-      .then((d) => { if (d.url) setAudioUrl(d.url) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .then(async (r) => {
+        const d = (await r.json()) as { url?: string; error?: string }
+        if (!r.ok) {
+          toast.error(d.error ?? 'Could not load audio')
+          return
+        }
+        if (!cancelled && d.url) setAudioUrl(d.url)
+      })
+      .catch(() => {
+        toast.error('Could not load audio')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [cue.id])
 
   if (loading) return <div className="h-10 bg-secondary/50 rounded animate-pulse" />

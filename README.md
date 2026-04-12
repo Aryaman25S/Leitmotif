@@ -13,7 +13,7 @@ A director uploads a scene clip, tags emotional intent using a controlled vocabu
 | Frontend + API | Next.js 16 (App Router, TypeScript) |
 | Styling | Tailwind CSS v4 + shadcn/ui v4 |
 | Data store | **PostgreSQL** via **Prisma** ([`prisma/schema.prisma`](prisma/schema.prisma), [`lib/store.ts`](lib/store.ts)) |
-| File storage | Local filesystem (`.data/uploads/`) served at `/api/files/` |
+| File storage | **Cloudflare R2** (S3 API) when `R2_*` env vars are set; otherwise **local disk** `.data/uploads/` and `/api/files/` ([`lib/storage.ts`](lib/storage.ts)) |
 | AI music generation | Stability AI — Stable Audio 2.5 (optional; silent WAV mock if no key) |
 | Auth (current) | Single **mock user** ([`lib/mock-auth.ts`](lib/mock-auth.ts)) — no sign-in UI |
 
@@ -48,6 +48,9 @@ npx prisma migrate dev
 
 - **`STABILITY_API_KEY`** — real Stable Audio mock cues. Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY` and the UI shows “Calling Stable Audio…”.
 - **`NEXT_PUBLIC_APP_URL`** — base URL for invite links (e.g. `http://localhost:3000`). Defaults to request origin when unset in some flows.
+- **`R2_*`** — Cloudflare R2 for uploads in production (see [`.env.example`](.env.example)).
+- **`INNGEST_EVENT_KEY`** / **`INNGEST_SIGNING_KEY`** — optional; when set, mock-cue generation runs on [Inngest](https://www.inngest.com/) instead of only `after()` on the same serverless invocation ([`app/api/inngest/route.ts`](app/api/inngest/route.ts)).
+- **`NEXT_DEV_ALLOWED_ORIGINS`** — optional; comma-separated hostnames when opening dev from a LAN IP (see [`next.config.ts`](next.config.ts)).
 
 **Smoke test** Stable Audio without the app UI:
 
@@ -105,11 +108,10 @@ On approval → composer brief URL (/brief/[cueId])
 
 | What | Where |
 |---|---|
-| Projects, scenes, intents, jobs, cues, comments, members | **Postgres** (Prisma) |
-| Uploaded videos | `.data/uploads/scene-videos/` |
-| Generated mock cue audio | `.data/uploads/mock-cues/` |
+| Projects, scenes, intents, jobs, cues, comments, members | **Postgres** (Prisma), e.g. hosted on **Supabase** |
+| Uploaded videos & generated mock cue WAVs | **R2 bucket** in production (`R2_PUBLIC_URL`); locally under `.data/uploads/` (git-ignored) |
 
-Upload directories are created automatically and are git-ignored (see `.gitignore`). **Reset DB:** drop/recreate the database or use Prisma migrate reset; **reset files:** delete `.data/uploads/`.
+**Reset DB:** drop/recreate the database or use Prisma migrate reset. **Reset local files:** delete `.data/uploads/`. **R2:** clear objects from the bucket in the Cloudflare dashboard if needed.
 
 ---
 
@@ -132,7 +134,8 @@ app/
     mock-cues/                    Approve, audio URL, composer acknowledge
     export/brief-data/           JSON bundle for cue + intent (integrations)
     storage/upload/              Init + commit file upload
-    files/[...path]/             Serve local files
+    files/[...path]/             Redirect to R2 public URL (prod) or serve local files (dev)
+    api/inngest/                 Inngest sync + registered functions (optional queue)
 
 components/
   vocabulary-bridge/SceneIntentEditor   Intent tagging UI
@@ -143,7 +146,9 @@ components/
 lib/
   store.ts                       Prisma data access
   mock-auth.ts                   Dev-only single user
-  storage.ts                     Local file I/O
+  storage.ts                     R2 + local disk; read/write helpers
+  generation/runGenerationJob.ts Shared Stable Audio → storage → DB pipeline
+  videoDuration.ts               Server-side duration via music-metadata (no ffprobe)
   prompts/taxonomy.ts            Controlled vocabulary
   prompts/buildGenerationPrompt.ts    Intent → prompts + musical spec
   prompts/intentDisplay.ts       Human labels for brief / UI
@@ -158,17 +163,11 @@ These are **called out in code (TODO)** and matter for a real deployment:
 
 | Area | Current behavior | Target |
 |------|------------------|--------|
-| **Generation jobs** | Fire-and-forget async in the API process after the HTTP response | Durable queue (Inngest, BullMQ, etc.) — see [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) |
-| **File hosting** | Local disk + `/api/files` | S3 / R2 + signed URLs — [`lib/storage.ts`](lib/storage.ts), [`app/api/files/[...path]/route.ts`](app/api/files/[...path]/route.ts) |
+| **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
+| **File hosting** | **R2** + public `files.*` domain; local fallback + `/api/files` in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
 | **Auth** | Mock user on every request | NextAuth / Lucia / Clerk — [`lib/mock-auth.ts`](lib/mock-auth.ts) |
 | **Invites & briefs** | Magic link + manual URL share | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), approve route |
-| **Video duration** | Browser-reported | Server `ffprobe` — [`app/api/scenes/[sceneId]/video/route.ts`](app/api/scenes/[sceneId]/video/route.ts) |
-
----
-
-## Legacy / optional
-
-- [`supabase/migrations/`](supabase/migrations/) — SQL from an earlier Supabase-oriented track. The running app uses **Prisma** only; keep or delete depending on whether you still use Supabase for hosting.
+| **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 
 ---
 

@@ -2,7 +2,7 @@
  * POST /api/scenes/[sceneId]/generate
  *
  * Creates a GenerationJob and kicks off background generation.
- * Uses Next.js after() to keep the serverless function alive after responding.
+ * When INNGEST_EVENT_KEY is set, work is queued on Inngest; otherwise uses Next.js after().
  */
 
 import { NextRequest, NextResponse, after } from 'next/server'
@@ -10,18 +10,15 @@ import {
   getIntent,
   getSceneCard,
   createJob,
-  updateJob,
-  createMockCue,
-  getMockCues,
   updateSceneCard,
-  uid,
-  now,
 } from '@/lib/store'
-import { generateWithStableAudio } from '@/lib/generation/stableAudio'
-import { saveFile } from '@/lib/storage'
 import { getMockUser } from '@/lib/mock-auth'
+import { runGenerationJob } from '@/lib/generation/runGenerationJob'
+import { inngest } from '@/inngest/client'
 
 export const maxDuration = 60
+
+const useInngestQueue = Boolean(process.env.INNGEST_EVENT_KEY?.trim())
 
 export async function POST(
   req: NextRequest,
@@ -63,64 +60,26 @@ export async function POST(
 
   await updateSceneCard(sceneId, { status: 'generating' })
 
-  after(async () => {
-    await runGenerationAsync(
-      job.id, sceneId, intent.positive_prompt!, intent.negative_prompt ?? '',
-      durationSec, scene?.label ?? 'scene', intentVersionId, user.id
-    )
-  })
+  const payload = {
+    jobId: job.id,
+    sceneId,
+    positivePrompt: intent.positive_prompt,
+    negativePrompt: intent.negative_prompt ?? '',
+    durationSec,
+    sceneLabel: scene?.label ?? 'scene',
+    intentVersionId,
+  }
+
+  if (useInngestQueue) {
+    await inngest.send({
+      name: 'leitmotif/generation.requested',
+      data: payload,
+    })
+  } else {
+    after(async () => {
+      await runGenerationJob(payload)
+    })
+  }
 
   return NextResponse.json({ jobId: job.id })
-}
-
-async function runGenerationAsync(
-  jobId: string,
-  sceneId: string,
-  positivePrompt: string,
-  negativePrompt: string,
-  durationSec: number,
-  sceneLabel: string,
-  intentVersionId: string,
-  userId: string
-) {
-  await updateJob(jobId, { status: 'processing', started_at: now() })
-
-  try {
-    const { buffer: audioBuffer, source: audioSource } = await generateWithStableAudio(
-      positivePrompt,
-      negativePrompt,
-      durationSec
-    )
-
-    const existingCues = await getMockCues(sceneId)
-    const versionNumber = existingCues.length + 1
-    const safeLabel = sceneLabel.replace(/[^a-zA-Z0-9_\-]/g, '_')
-    const fileName = `${safeLabel}_mock_v${versionNumber}_REFERENCE_ONLY.wav`
-    const fileKey = await saveFile('mock-cues', `${sceneId}_${uid()}.wav`, audioBuffer)
-
-    await createMockCue({
-      generation_job_id: jobId,
-      scene_card_id: sceneId,
-      intent_version_id: intentVersionId,
-      version_number: versionNumber,
-      file_key: fileKey,
-      file_name: fileName,
-      duration_sec: durationSec,
-      is_mock: audioSource === 'silent_mock',
-      is_approved: false,
-      approved_by: null,
-      approved_at: null,
-      composer_acknowledged: false,
-      composer_acknowledged_at: null,
-      composer_notes: null,
-    })
-
-    await updateJob(jobId, { status: 'completed', completed_at: now() })
-    await updateSceneCard(sceneId, { status: 'awaiting_approval' })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Generation failed'
-    await updateJob(jobId, { status: 'failed', error_message: message })
-    await updateSceneCard(sceneId, { status: 'tagged' })
-    console.error('[generate] Failed:', message)
-  }
 }

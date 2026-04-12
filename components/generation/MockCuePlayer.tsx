@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Play, Pause, Volume2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn, formatTime } from '@/lib/utils'
 
 export interface MockCuePlayerProps {
@@ -20,16 +21,23 @@ export default function MockCuePlayer({ src, label, durationSec, approved = fals
   const [hovering, setHovering] = useState(false)
   const [hoverX, setHoverX] = useState(0)
 
-  function handlePlayPause() {
+  async function handlePlayPause() {
     const a = audioRef.current
     if (!a) return
-    if (playing) { a.pause() } else { a.play() }
-    setPlaying(!playing)
+    if (!a.paused) {
+      a.pause()
+      return
+    }
+    try {
+      await a.play()
+    } catch {
+      toast.error('Could not play audio — the file may be missing, blocked, or still loading.')
+    }
   }
 
   function handleScrub(e: React.MouseEvent<HTMLDivElement>) {
     const a = audioRef.current
-    if (!a) return
+    if (!a || !Number.isFinite(a.duration) || a.duration <= 0) return
     const rect = e.currentTarget.getBoundingClientRect()
     a.currentTime = ((e.clientX - rect.left) / rect.width) * a.duration
   }
@@ -45,9 +53,15 @@ export default function MockCuePlayer({ src, label, durationSec, approved = fals
         ref={audioRef}
         src={src}
         preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onError={() => {
+          setPlaying(false)
+          toast.error('Audio failed to load — try refreshing the page.')
+        }}
         onTimeUpdate={() => {
           const a = audioRef.current
-          if (!a) return
+          if (!a || !Number.isFinite(a.duration) || a.duration <= 0) return
           setCurrentTime(a.currentTime)
           setProgress((a.currentTime / a.duration) * 100)
         }}

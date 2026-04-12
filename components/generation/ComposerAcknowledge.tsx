@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle2, Loader2, MessageSquare } from 'lucide-react'
@@ -33,7 +34,16 @@ export default function ComposerAcknowledge({
     setSaving(false)
     if (res.ok) {
       setAcknowledged(true)
+      return
     }
+    let msg = 'Could not save acknowledgement'
+    try {
+      const j = (await res.json()) as { error?: string }
+      if (j.error) msg = j.error
+    } catch {
+      /* ignore */
+    }
+    toast.error(msg)
   }
 
   if (acknowledged) {
