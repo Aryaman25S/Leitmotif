@@ -109,7 +109,7 @@ On approval → composer brief URL (/brief/[cueId])
 | What | Where |
 |---|---|
 | Projects, scenes, intents, jobs, cues, comments, members | **Postgres** (Prisma), e.g. hosted on **Supabase** |
-| Uploaded videos & generated mock cue WAVs | **R2 bucket** in production (`R2_PUBLIC_URL`); locally under `.data/uploads/` (git-ignored) |
+| Uploaded videos & generated mock cue WAVs | **R2 bucket** in production (browser loads via same-origin `/api/files/…` which streams from R2); locally under `.data/uploads/` (git-ignored) |
 
 **Reset DB:** drop/recreate the database or use Prisma migrate reset. **Reset local files:** delete `.data/uploads/`. **R2:** clear objects from the bucket in the Cloudflare dashboard if needed.
 
@@ -134,7 +134,7 @@ app/
     mock-cues/                    Approve, audio URL, composer acknowledge
     export/brief-data/           JSON bundle for cue + intent (integrations)
     storage/upload/              Init + commit file upload
-    files/[...path]/             Redirect to R2 public URL (prod) or serve local files (dev)
+    files/[...path]/             Stream from R2 or disk (same-origin for media playback)
     api/inngest/                 Inngest sync + registered functions (optional queue)
 
 components/
@@ -164,7 +164,7 @@ These are **called out in code (TODO)** and matter for a real deployment:
 | Area | Current behavior | Target |
 |------|------------------|--------|
 | **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
-| **File hosting** | **R2** + public `files.*` domain; local fallback + `/api/files` in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
+| **File hosting** | **R2** + same-origin `/api/files` streaming; local disk in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
 | **Auth** | Mock user on every request | NextAuth / Lucia / Clerk — [`lib/mock-auth.ts`](lib/mock-auth.ts) |
 | **Invites & briefs** | Magic link + manual URL share | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), approve route |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |

@@ -1,22 +1,11 @@
 /**
  * GET /api/files/<bucket>/<filename>
  *
- * In production (R2 configured): redirects to the public R2 URL.
- * In local dev: serves files from disk.
+ * Streams bytes from R2 or local disk (same-origin for reliable `<audio>` / `<video>`).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getFileUrl, getFilePath, fileExists } from '@/lib/storage'
-import fs from 'fs'
-import path from 'path'
-
-const CONTENT_TYPES: Record<string, string> = {
-  wav: 'audio/wav',
-  mp3: 'audio/mpeg',
-  mp4: 'video/mp4',
-  mov: 'video/quicktime',
-  webm: 'video/webm',
-}
+import { streamStorageObject } from '@/lib/storage'
 
 export async function GET(
   _req: NextRequest,
@@ -25,28 +14,22 @@ export async function GET(
   const { path: segments } = await params
   const fileKey = segments.join('/')
 
-  const r2Url = getFileUrl(fileKey)
-  if (r2Url.startsWith('http')) {
-    return NextResponse.redirect(r2Url, { status: 302, headers: { 'Cache-Control': 'public, max-age=3600' } })
-  }
-
-  if (!(await fileExists(fileKey))) {
+  const meta = await streamStorageObject(fileKey)
+  if (!meta) {
     return new NextResponse('File not found', { status: 404 })
   }
 
-  const filePath = getFilePath(fileKey)
-  const ext = path.extname(filePath).slice(1).toLowerCase()
-  const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream'
+  const headers: Record<string, string> = {
+    'Content-Type': meta.contentType,
+    'Cache-Control': 'public, max-age=3600',
+    'Accept-Ranges': 'bytes',
+  }
+  if (meta.contentLength != null && meta.contentLength > 0) {
+    headers['Content-Length'] = String(meta.contentLength)
+  }
 
-  const fileBuffer = fs.readFileSync(filePath)
-
-  return new NextResponse(fileBuffer, {
+  return new NextResponse(meta.stream, {
     status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Content-Length': String(fileBuffer.length),
-      'Cache-Control': 'public, max-age=3600',
-      'Accept-Ranges': 'bytes',
-    },
+    headers,
   })
 }
