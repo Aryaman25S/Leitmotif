@@ -16,8 +16,6 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? ''
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? ''
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? ''
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME ?? ''
-const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, '')
-
 const useR2 = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME)
 
 let _s3: S3Client | null = null
@@ -39,6 +37,7 @@ function getS3(): S3Client {
 
 import fs from 'fs'
 import path from 'path'
+import { Readable } from 'node:stream'
 
 const UPLOADS_DIR = path.join(process.cwd(), '.data', 'uploads')
 
@@ -88,10 +87,12 @@ export async function fileExists(fileKey: string): Promise<boolean> {
   return fs.existsSync(path.join(UPLOADS_DIR, fileKey))
 }
 
+/**
+ * URL the browser uses to load media. Always same-origin `/api/files/...` so
+ * `<audio>` / `<video>` avoid cross-origin + R2 CORS / Range issues. The route
+ * streams from R2 or disk.
+ */
 export function getFileUrl(fileKey: string): string {
-  if (useR2 && R2_PUBLIC_URL) {
-    return `${R2_PUBLIC_URL}/${fileKey}`
-  }
   return `/api/files/${fileKey}`
 }
 
@@ -118,6 +119,41 @@ export async function readFileBuffer(fileKey: string): Promise<Buffer | null> {
   const p = getFilePath(fileKey)
   if (!fs.existsSync(p)) return null
   return fs.readFileSync(p)
+}
+
+/** Stream object bytes for GET /api/files (R2 or local disk). */
+export async function streamStorageObject(fileKey: string): Promise<{
+  stream: ReadableStream<Uint8Array>
+  contentType: string
+  contentLength?: number
+} | null> {
+  if (useR2) {
+    try {
+      const out = await getS3().send(
+        new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileKey })
+      )
+      if (!out.Body) return null
+      const len = out.ContentLength
+      return {
+        stream: out.Body.transformToWebStream(),
+        contentType: out.ContentType ?? contentTypeFromKey(fileKey),
+        ...(typeof len === 'number' && len > 0 ? { contentLength: len } : {}),
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const p = getFilePath(fileKey)
+  if (!fs.existsSync(p)) return null
+  const st = fs.statSync(p)
+  const nodeReadable = fs.createReadStream(p)
+  const stream = Readable.toWeb(nodeReadable) as ReadableStream<Uint8Array>
+  return {
+    stream,
+    contentType: contentTypeFromKey(fileKey),
+    contentLength: st.size,
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
