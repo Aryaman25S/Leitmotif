@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Play, Pause } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatTime } from '@/lib/utils'
 
 export interface MockCuePlayerStaticProps {
@@ -31,9 +32,15 @@ export default function MockCuePlayerStatic({ src, label }: MockCuePlayerStaticP
         src={src}
         preload="metadata"
         onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onError={() => {
+          setPlaying(false)
+          toast.error('Audio failed to load — try refreshing the page.')
+        }}
         onTimeUpdate={() => {
           const a = audioRef.current
-          if (!a) return
+          if (!a || !Number.isFinite(a.duration) || a.duration <= 0) return
           setCurrentTime(a.currentTime)
           setProgress((a.currentTime / a.duration) * 100)
         }}
@@ -43,11 +50,18 @@ export default function MockCuePlayerStatic({ src, label }: MockCuePlayerStaticP
       <Button
         size="icon"
         variant="outline"
-        onClick={() => {
+        onClick={async () => {
           const a = audioRef.current
           if (!a) return
-          playing ? a.pause() : a.play()
-          setPlaying(!playing)
+          if (!a.paused) {
+            a.pause()
+            return
+          }
+          try {
+            await a.play()
+          } catch {
+            toast.error('Could not play audio — the file may be missing, blocked, or still loading.')
+          }
         }}
         className="h-9 w-9 shrink-0"
       >
@@ -60,7 +74,7 @@ export default function MockCuePlayerStatic({ src, label }: MockCuePlayerStaticP
           className="relative h-2 bg-secondary rounded-full cursor-pointer overflow-hidden group"
           onClick={(e) => {
             const a = audioRef.current
-            if (!a) return
+            if (!a || !Number.isFinite(a.duration) || a.duration <= 0) return
             const rect = e.currentTarget.getBoundingClientRect()
             a.currentTime = ((e.clientX - rect.left) / rect.width) * a.duration
           }}

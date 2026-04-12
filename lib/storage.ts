@@ -7,6 +7,7 @@ import {
   S3Client,
   PutObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
 // ── R2 client (lazy singleton) ───────────────────────────────────────────────
@@ -97,6 +98,26 @@ export function getFileUrl(fileKey: string): string {
 /** Still used by the local dev /api/files route to serve from disk. */
 export function getFilePath(fileKey: string): string {
   return path.join(UPLOADS_DIR, fileKey)
+}
+
+/** Read full object bytes (for server-side media probing). */
+export async function readFileBuffer(fileKey: string): Promise<Buffer | null> {
+  if (useR2) {
+    try {
+      const out = await getS3().send(
+        new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileKey })
+      )
+      const body = out.Body
+      if (!body) return null
+      const bytes = await body.transformToByteArray()
+      return Buffer.from(bytes)
+    } catch {
+      return null
+    }
+  }
+  const p = getFilePath(fileKey)
+  if (!fs.existsSync(p)) return null
+  return fs.readFileSync(p)
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
