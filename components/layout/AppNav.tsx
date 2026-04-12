@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,9 +57,12 @@ export default function AppNav({ user, projectTitle }: AppNavProps) {
             <DropdownMenuItem className="text-xs text-muted-foreground" disabled>
               {user.email}
             </DropdownMenuItem>
-            <DropdownMenuItem disabled>
-              {/* TODO: Add sign out when real auth is connected */}
-              Local dev mode
+            <DropdownMenuItem
+              onClick={() => {
+                void signOut({ callbackUrl: '/auth/signin' })
+              }}
+            >
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

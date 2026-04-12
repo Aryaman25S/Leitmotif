@@ -8,8 +8,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveFile } from '@/lib/storage'
 import path from 'path'
+import { getSessionUser } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  if (!(await getSessionUser())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   const fileKey = formData.get('fileKey') as string | null

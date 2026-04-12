@@ -1,8 +1,8 @@
 import AppNav from '@/components/layout/AppNav'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireSessionUser } from '@/lib/auth'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = getMockUser()
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await requireSessionUser()
 
   return (
     <div className="min-h-screen flex flex-col">

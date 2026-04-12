@@ -6,11 +6,16 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { streamStorageObject } from '@/lib/storage'
+import { getSessionUser } from '@/lib/auth'
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  if (!(await getSessionUser())) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
   const { path: segments } = await params
   const fileKey = segments.join('/')
 

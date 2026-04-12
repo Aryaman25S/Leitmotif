@@ -178,23 +178,13 @@ export const MOCK_USER: Profile = {
   created_at: new Date().toISOString(),
 }
 
-async function ensureMockUser() {
-  await prisma.profile.upsert({
-    where: { id: MOCK_USER.id },
-    update: {},
-    create: {
-      id: MOCK_USER.id,
-      name: MOCK_USER.name,
-      email: MOCK_USER.email,
-      role_default: MOCK_USER.role_default,
-    },
-  })
-}
-
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-export async function getProjects(): Promise<Project[]> {
-  const rows = await prisma.project.findMany({ orderBy: { updated_at: 'desc' } })
+export async function getProjects(ownerId?: string): Promise<Project[]> {
+  const rows = await prisma.project.findMany({
+    where: ownerId ? { owner_id: ownerId } : undefined,
+    orderBy: { updated_at: 'desc' },
+  })
   return rows.map((p) => ({
     ...p,
     created_at: isoRequired(p.created_at),
@@ -203,8 +193,10 @@ export async function getProjects(): Promise<Project[]> {
   }))
 }
 
-export async function getProject(id: string): Promise<Project | undefined> {
-  const p = await prisma.project.findUnique({ where: { id } })
+export async function getProject(id: string, ownerId?: string): Promise<Project | undefined> {
+  const p = ownerId
+    ? await prisma.project.findFirst({ where: { id, owner_id: ownerId } })
+    : await prisma.project.findUnique({ where: { id } })
   if (!p) return undefined
   return {
     ...p,
@@ -217,7 +209,6 @@ export async function getProject(id: string): Promise<Project | undefined> {
 export async function createProject(
   data: Omit<Project, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Project> {
-  await ensureMockUser()
   const p = await prisma.project.create({
     data: {
       title: data.title,
@@ -261,9 +252,17 @@ export async function updateProject(
 // ── Generation Settings ───────────────────────────────────────────────────────
 
 export async function getGenerationSettings(
-  projectId: string
+  projectId: string,
+  ownerId?: string
 ): Promise<GenerationSettings | undefined> {
-  const s = await prisma.generationSettings.findUnique({ where: { project_id: projectId } })
+  const s = ownerId
+    ? await prisma.generationSettings.findFirst({
+        where: {
+          project_id: projectId,
+          project: { owner_id: ownerId },
+        },
+      })
+    : await prisma.generationSettings.findUnique({ where: { project_id: projectId } })
   if (!s) return undefined
   return { ...s, updated_at: isoRequired(s.updated_at) }
 }
@@ -387,16 +386,26 @@ export async function acceptProjectInviteByToken(
 
 // ── Scene Cards ───────────────────────────────────────────────────────────────
 
-export async function getSceneCards(projectId: string): Promise<SceneCard[]> {
+export async function getSceneCards(projectId: string, ownerId?: string): Promise<SceneCard[]> {
   const rows = await prisma.sceneCard.findMany({
-    where: { project_id: projectId },
+    where: {
+      project_id: projectId,
+      ...(ownerId ? { project: { owner_id: ownerId } } : {}),
+    },
     orderBy: { sort_order: 'asc' },
   })
   return rows.map((s) => ({ ...s, created_at: isoRequired(s.created_at) }))
 }
 
-export async function getSceneCard(id: string): Promise<SceneCard | undefined> {
-  const s = await prisma.sceneCard.findUnique({ where: { id } })
+export async function getSceneCard(id: string, ownerId?: string): Promise<SceneCard | undefined> {
+  const s = ownerId
+    ? await prisma.sceneCard.findFirst({
+        where: {
+          id,
+          project: { owner_id: ownerId },
+        },
+      })
+    : await prisma.sceneCard.findUnique({ where: { id } })
   if (!s) return undefined
   return { ...s, created_at: isoRequired(s.created_at) }
 }
@@ -449,9 +458,15 @@ export async function updateSceneCard(
 
 // ── Intent Versions ───────────────────────────────────────────────────────────
 
-export async function getLatestIntent(sceneCardId: string): Promise<IntentVersion | undefined> {
+export async function getLatestIntent(
+  sceneCardId: string,
+  ownerId?: string
+): Promise<IntentVersion | undefined> {
   const iv = await prisma.intentVersion.findFirst({
-    where: { scene_card_id: sceneCardId },
+    where: {
+      scene_card_id: sceneCardId,
+      ...(ownerId ? { scene_card: { project: { owner_id: ownerId } } } : {}),
+    },
     orderBy: { version_number: 'desc' },
   })
   if (!iv) return undefined
@@ -462,8 +477,15 @@ export async function getLatestIntent(sceneCardId: string): Promise<IntentVersio
   }
 }
 
-export async function getIntent(id: string): Promise<IntentVersion | undefined> {
-  const iv = await prisma.intentVersion.findUnique({ where: { id } })
+export async function getIntent(id: string, ownerId?: string): Promise<IntentVersion | undefined> {
+  const iv = ownerId
+    ? await prisma.intentVersion.findFirst({
+        where: {
+          id,
+          scene_card: { project: { owner_id: ownerId } },
+        },
+      })
+    : await prisma.intentVersion.findUnique({ where: { id } })
   if (!iv) return undefined
   return {
     ...iv,
@@ -520,9 +542,15 @@ export async function createIntentVersion(
 
 // ── Generation Jobs ───────────────────────────────────────────────────────────
 
-export async function getLatestJob(sceneCardId: string): Promise<GenerationJob | undefined> {
+export async function getLatestJob(
+  sceneCardId: string,
+  ownerId?: string
+): Promise<GenerationJob | undefined> {
   const job = await prisma.generationJob.findFirst({
-    where: { scene_card_id: sceneCardId },
+    where: {
+      scene_card_id: sceneCardId,
+      ...(ownerId ? { scene_card: { project: { owner_id: ownerId } } } : {}),
+    },
     orderBy: { queued_at: 'desc' },
   })
   if (!job) return undefined
@@ -596,9 +624,12 @@ export async function updateJob(
 
 // ── Mock Cues ─────────────────────────────────────────────────────────────────
 
-export async function getMockCues(sceneCardId: string): Promise<MockCue[]> {
+export async function getMockCues(sceneCardId: string, ownerId?: string): Promise<MockCue[]> {
   const rows = await prisma.mockCue.findMany({
-    where: { scene_card_id: sceneCardId },
+    where: {
+      scene_card_id: sceneCardId,
+      ...(ownerId ? { scene_card: { project: { owner_id: ownerId } } } : {}),
+    },
     orderBy: { version_number: 'desc' },
   })
   return rows.map((c) => ({
@@ -609,8 +640,15 @@ export async function getMockCues(sceneCardId: string): Promise<MockCue[]> {
   }))
 }
 
-export async function getMockCue(id: string): Promise<MockCue | undefined> {
-  const c = await prisma.mockCue.findUnique({ where: { id } })
+export async function getMockCue(id: string, ownerId?: string): Promise<MockCue | undefined> {
+  const c = ownerId
+    ? await prisma.mockCue.findFirst({
+        where: {
+          id,
+          scene_card: { project: { owner_id: ownerId } },
+        },
+      })
+    : await prisma.mockCue.findUnique({ where: { id } })
   if (!c) return undefined
   return {
     ...c,
@@ -686,9 +724,12 @@ export async function updateMockCue(
 
 // ── Comments ──────────────────────────────────────────────────────────────────
 
-export async function getComments(sceneCardId: string): Promise<Comment[]> {
+export async function getComments(sceneCardId: string, ownerId?: string): Promise<Comment[]> {
   const rows = await prisma.comment.findMany({
-    where: { scene_card_id: sceneCardId },
+    where: {
+      scene_card_id: sceneCardId,
+      ...(ownerId ? { scene_card: { project: { owner_id: ownerId } } } : {}),
+    },
     orderBy: { created_at: 'asc' },
   })
   return rows.map((c) => ({

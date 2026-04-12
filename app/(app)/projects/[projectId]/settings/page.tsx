@@ -8,9 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, UserPlus, Trash2, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Trash2, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -26,14 +24,6 @@ const INSTRUMENTATION_OPTIONS = [
   { key: 'jazz',           label: 'Jazz ensemble' },
 ]
 
-interface Member {
-  id: string
-  invite_email: string | null
-  role_on_project: string
-  accepted_at: string | null
-  profile?: { name: string | null; email: string } | null
-}
-
 export default function ProjectSettingsPage() {
   const params = useParams()
   const projectId = params.projectId as string
@@ -46,10 +36,6 @@ export default function ProjectSettingsPage() {
   const [eraReference, setEraReference] = useState('')
   const [budgetReality, setBudgetReality] = useState('hybrid')
   const [doNotGenerate, setDoNotGenerate] = useState('')
-  const [members, setMembers] = useState<Member[]>([])
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState('composer')
-  const [inviting, setInviting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -68,7 +54,6 @@ export default function ProjectSettingsPage() {
           setBudgetReality(data.settings.budget_reality ?? 'hybrid')
           setDoNotGenerate(data.settings.do_not_generate ?? '')
         }
-        if (data.members) setMembers(data.members)
         setLoaded(true)
       })
   }, [projectId])
@@ -103,38 +88,6 @@ export default function ProjectSettingsPage() {
       router.refresh()
     }
     setSaving(false)
-  }
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault()
-    if (!inviteEmail.trim()) return
-    setInviting(true)
-    const res = await fetch(`/api/projects/${projectId}/invite`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error ?? 'Failed to send invite')
-    } else {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      const path = data.invitePath as string | undefined
-      const absolute =
-        (data.inviteUrl as string | undefined) ||
-        (path && origin ? `${origin}${path}` : path)
-      if (absolute) {
-        toast.success(`Invite created for ${inviteEmail}. Share this link: ${absolute}`)
-      } else {
-        toast.success(`Invited ${inviteEmail}`)
-      }
-      setInviteEmail('')
-      // Refresh member list
-      fetch(`/api/projects/${projectId}`).then((r) => r.json()).then((d) => {
-        if (d.members) setMembers(d.members)
-      })
-    }
-    setInviting(false)
   }
 
   if (!loaded) return (
@@ -236,62 +189,6 @@ export default function ProjectSettingsPage() {
               <Label htmlFor="do-not">Do not generate (project-wide)</Label>
               <Textarea id="do-not" placeholder="e.g. No ethnic clichés. No sad violins." value={doNotGenerate} onChange={(e) => setDoNotGenerate(e.target.value)} rows={2} className="resize-none text-sm" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Team</CardTitle>
-            <CardDescription>
-              Invite collaborators by email. No invite email is sent yet — after adding someone,
-              copy the magic link from the confirmation and send it yourself, or open it locally to
-              accept the invite.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {members.length > 0 && (
-              <div className="space-y-2">
-                {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-sm py-1">
-                    <span className="text-muted-foreground">
-                      {m.profile?.name ?? m.profile?.email ?? m.invite_email ?? '—'}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {m.role_on_project.replace(/_/g, ' ')}
-                      </Badge>
-                      {!m.accepted_at && (
-                        <span className="text-xs text-muted-foreground">Pending</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <Separator />
-              </div>
-            )}
-            <form onSubmit={handleInvite} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="invite-email">Invite by email</Label>
-                <Input id="invite-email" type="email" placeholder="collaborator@studio.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="invite-role">Their role</Label>
-                <Select value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
-                  <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="composer">Composer</SelectItem>
-                    <SelectItem value="music_supervisor">Music Supervisor</SelectItem>
-                    <SelectItem value="director">Director</SelectItem>
-                    <SelectItem value="sound_designer">Sound Designer</SelectItem>
-                    <SelectItem value="viewer">Viewer (read-only)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" disabled={inviting || !inviteEmail.trim()} size="sm" className="gap-1.5">
-                <UserPlus className="h-3.5 w-3.5" />
-                {inviting ? 'Adding…' : 'Add collaborator'}
-              </Button>
-            </form>
           </CardContent>
         </Card>
 
