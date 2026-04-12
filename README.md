@@ -15,7 +15,7 @@ A director uploads a scene clip, tags emotional intent using a controlled vocabu
 | Data store | **PostgreSQL** via **Prisma** ([`prisma/schema.prisma`](prisma/schema.prisma), [`lib/store.ts`](lib/store.ts)) |
 | File storage | **Cloudflare R2** (S3 API) when `R2_*` env vars are set; otherwise **local disk** `.data/uploads/` and `/api/files/` ([`lib/storage.ts`](lib/storage.ts)) |
 | AI music generation | Stability AI — Stable Audio 2.5 (optional; silent WAV mock if no key) |
-| Auth (current) | Single **mock user** ([`lib/mock-auth.ts`](lib/mock-auth.ts)) — no sign-in UI |
+| Auth (current) | **NextAuth credentials** (username/email + password) via [`lib/auth.ts`](lib/auth.ts) |
 
 ---
 
@@ -47,7 +47,7 @@ npx prisma migrate dev
 ### 3. Environment (optional)
 
 - **`STABILITY_API_KEY`** — real Stable Audio mock cues. Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY` and the UI shows “Calling Stable Audio…”.
-- **`NEXT_PUBLIC_APP_URL`** — base URL for invite links (e.g. `http://localhost:3000`). Defaults to request origin when unset in some flows.
+- **`NEXTAUTH_SECRET`** / **`NEXTAUTH_URL`** — required for session auth.
 - **`R2_*`** — Cloudflare R2 for uploads in production (see [`.env.example`](.env.example)).
 - **`INNGEST_EVENT_KEY`** / **`INNGEST_SIGNING_KEY`** — optional; when set, mock-cue generation runs on [Inngest](https://www.inngest.com/) instead of only `after()` on the same serverless invocation ([`app/api/inngest/route.ts`](app/api/inngest/route.ts)).
 - **`NEXT_DEV_ALLOWED_ORIGINS`** — optional; comma-separated hostnames when opening dev from a LAN IP (see [`next.config.ts`](next.config.ts)).
@@ -66,7 +66,7 @@ Writes `scripts/out-test-stable-audio.wav` and prints `stable_api` vs `silent_mo
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — the app runs without sign-in (mock user).
+Open [http://localhost:3000](http://localhost:3000), then create an account at `/auth/register`.
 
 ---
 
@@ -145,7 +145,8 @@ components/
 
 lib/
   store.ts                       Prisma data access
-  mock-auth.ts                   Dev-only single user
+  auth.ts                        NextAuth credentials config + session helpers
+  password.ts                    Password hashing + verification helpers
   storage.ts                     R2 + local disk; read/write helpers
   generation/runGenerationJob.ts Shared Stable Audio → storage → DB pipeline
   videoDuration.ts               Server-side duration via music-metadata (no ffprobe)
@@ -165,7 +166,7 @@ These are **called out in code (TODO)** and matter for a real deployment:
 |------|------------------|--------|
 | **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
 | **File hosting** | **R2** + same-origin `/api/files` streaming; local disk in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
-| **Auth** | Mock user on every request | NextAuth / Lucia / Clerk — [`lib/mock-auth.ts`](lib/mock-auth.ts) |
+| **Auth** | NextAuth credentials (local username/password) | Add email verification + password reset flows |
 | **Invites & briefs** | Magic link + manual URL share | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), approve route |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 
