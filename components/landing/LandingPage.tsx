@@ -74,7 +74,7 @@ export default function LandingPage() {
             <span className="text-sm font-semibold tracking-wide">Leitmotif</span>
           </Link>
           <Link
-            href="/projects"
+            href="/sign-in"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             Get started
@@ -143,7 +143,7 @@ export default function LandingPage() {
           {/* CTA */}
           <motion.div variants={heroChildVariants}>
             <Link
-              href="/projects"
+              href="/sign-in"
               className={cn(
                 buttonVariants({ size: 'lg' }),
                 'gap-2 text-sm px-6 h-11 bg-primary hover:bg-primary/90 shadow-[0_0_20px_-4px] shadow-primary/30 transition-shadow hover:shadow-[0_0_28px_-4px] hover:shadow-primary/40'
@@ -332,7 +332,7 @@ export default function LandingPage() {
           </p>
 
           <Link
-            href="/projects"
+            href="/sign-in"
             className={cn(
               buttonVariants({ size: 'lg' }),
               'gap-2 text-sm px-6 h-11 bg-primary hover:bg-primary/90 shadow-[0_0_20px_-4px] shadow-primary/30 transition-shadow hover:shadow-[0_0_28px_-4px] hover:shadow-primary/40'

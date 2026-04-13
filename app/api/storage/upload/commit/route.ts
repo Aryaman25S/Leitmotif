@@ -8,8 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveFile } from '@/lib/storage'
 import path from 'path'
+import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
+  const profile = await requireApiSession(req)
+  if (profile instanceof NextResponse) return profile
+
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   const fileKey = formData.get('fileKey') as string | null
@@ -25,6 +29,16 @@ export async function POST(req: NextRequest) {
 
   const bucket = parts[0]
   const filename = parts.slice(1).join('/')
+
+  if (bucket === 'scene-videos') {
+    const underscore = filename.indexOf('_')
+    const sceneId = underscore === -1 ? '' : filename.slice(0, underscore)
+    if (!sceneId) {
+      return NextResponse.json({ error: 'Invalid fileKey' }, { status: 400 })
+    }
+    const denied = await assertSceneAccess(profile, sceneId)
+    if (denied) return denied
+  }
 
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)

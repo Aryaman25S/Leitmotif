@@ -1,7 +1,17 @@
 export const dynamic = 'force-dynamic'
 
-import { getSceneCard, getProject, getLatestIntent, getGenerationSettings, getMockCues, getLatestJob, getComments } from '@/lib/store'
-import { notFound } from 'next/navigation'
+import {
+  getSceneCard,
+  getProject,
+  getLatestIntent,
+  getGenerationSettings,
+  getMockCues,
+  getLatestJob,
+  getComments,
+  profileCanAccessProject,
+} from '@/lib/store'
+import { notFound, redirect } from 'next/navigation'
+import { getSessionProfile } from '@/lib/session'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import SceneIntentEditor from '@/components/vocabulary-bridge/SceneIntentEditor'
@@ -20,6 +30,12 @@ export default async function ScenePage({
   params: Promise<{ projectId: string; sceneId: string }>
 }) {
   const { projectId, sceneId } = await params
+
+  const profile = await getSessionProfile()
+  if (!profile) redirect('/sign-in')
+
+  const canAccess = await profileCanAccessProject(profile.id, projectId)
+  if (!canAccess) notFound()
 
   const scene = await getSceneCard(sceneId)
   if (!scene || scene.project_id !== projectId) notFound()

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createIntentVersion, updateSceneCard } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
+
   const body = await req.json()
 
   if (!body.scene_card_id) {
     return NextResponse.json({ error: 'scene_card_id required' }, { status: 400 })
   }
+
+  const denied = await assertSceneAccess(user, body.scene_card_id)
+  if (denied) return denied
 
   const iv = await createIntentVersion({
     scene_card_id: body.scene_card_id,

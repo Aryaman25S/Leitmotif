@@ -13,18 +13,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getMockUser } from '@/lib/mock-auth'
 import { uid } from '@/lib/store'
 import path from 'path'
+import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
-  getMockUser() // ensures auth context exists
+  const profile = await requireApiSession(req)
+  if (profile instanceof NextResponse) return profile
 
   const { sceneId, fileName, contentType } = await req.json()
 
   if (!sceneId || !fileName || !contentType) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+
+  const denied = await assertSceneAccess(profile, sceneId)
+  if (denied) return denied
 
   const ext = path.extname(fileName).toLowerCase() || '.bin'
   const bucket = contentType.startsWith('video/') ? 'scene-videos' : 'mock-cues'

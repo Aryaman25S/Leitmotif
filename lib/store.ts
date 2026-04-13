@@ -168,39 +168,56 @@ function isoRequired(d: Date): string {
   return d.toISOString()
 }
 
-// ── Mock user ─────────────────────────────────────────────────────────────────
-
-export const MOCK_USER: Profile = {
-  id: 'mock-user-01',
-  name: 'Local Director',
-  email: 'director@local.dev',
-  role_default: 'director',
-  created_at: new Date().toISOString(),
-}
-
-async function ensureMockUser() {
-  await prisma.profile.upsert({
-    where: { id: MOCK_USER.id },
-    update: {},
-    create: {
-      id: MOCK_USER.id,
-      name: MOCK_USER.name,
-      email: MOCK_USER.email,
-      role_default: MOCK_USER.role_default,
-    },
-  })
-}
-
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-export async function getProjects(): Promise<Project[]> {
-  const rows = await prisma.project.findMany({ orderBy: { updated_at: 'desc' } })
+/** Projects the profile owns or is an accepted member of. */
+export async function getProjectsForProfile(profileId: string): Promise<Project[]> {
+  const rows = await prisma.project.findMany({
+    where: {
+      OR: [
+        { owner_id: profileId },
+        {
+          project_members: {
+            some: {
+              user_id: profileId,
+              accepted_at: { not: null },
+            },
+          },
+        },
+      ],
+    },
+    orderBy: { updated_at: 'desc' },
+  })
   return rows.map((p) => ({
     ...p,
     created_at: isoRequired(p.created_at),
     updated_at: isoRequired(p.updated_at),
     tone_brief: p.tone_brief ?? null,
   }))
+}
+
+export async function profileCanAccessProject(
+  profileId: string,
+  projectId: string
+): Promise<boolean> {
+  const row = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      OR: [
+        { owner_id: profileId },
+        {
+          project_members: {
+            some: {
+              user_id: profileId,
+              accepted_at: { not: null },
+            },
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  })
+  return !!row
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {
@@ -217,7 +234,6 @@ export async function getProject(id: string): Promise<Project | undefined> {
 export async function createProject(
   data: Omit<Project, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Project> {
-  await ensureMockUser()
   const p = await prisma.project.create({
     data: {
       title: data.title,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { acceptProjectInviteByToken } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession } from '@/lib/api-auth'
 
 /**
  * POST /api/invite/accept
@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'token required' }, { status: 400 })
   }
 
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
+
   const result = await acceptProjectInviteByToken(token, user.id)
   if (!result) {
     return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 400 })

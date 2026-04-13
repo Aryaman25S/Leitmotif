@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getProject, updateProject, getGenerationSettings, upsertGenerationSettings, getProjectMembers } from '@/lib/store'
+import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
+  const profile = await requireApiSession(req)
+  if (profile instanceof NextResponse) return profile
+
+  const denied = await assertProjectAccess(profile, projectId)
+  if (denied) return denied
+
   const project = await getProject(projectId)
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -20,6 +27,12 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
+  const profile = await requireApiSession(req)
+  if (profile instanceof NextResponse) return profile
+
+  const denied = await assertProjectAccess(profile, projectId)
+  if (denied) return denied
+
   const body = await req.json()
 
   const project = await updateProject(projectId, {

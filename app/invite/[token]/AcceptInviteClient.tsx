@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 
 export default function AcceptInviteClient({
@@ -27,6 +29,10 @@ export default function AcceptInviteClient({
     const data = await res.json().catch(() => ({}))
     setLoading(false)
     if (!res.ok) {
+      if (res.status === 401) {
+        setError('Please sign in to accept this invite.')
+        return
+      }
       setError(data.error ?? 'Could not accept invite')
       return
     }
@@ -36,16 +42,26 @@ export default function AcceptInviteClient({
     }
   }
 
+  const signInHref = `/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`
+
   return (
     <div className="space-y-4">
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="space-y-2">
+          <p className="text-sm text-destructive">{error}</p>
+          {error.includes('sign in') ? (
+            <Link href={signInHref} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}>
+              Sign in
+            </Link>
+          ) : null}
+        </div>
+      )}
       <Button onClick={handleAccept} disabled={loading} className="w-full sm:w-auto gap-2">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Join &ldquo;{projectTitle}&rdquo;
       </Button>
       <p className="text-xs text-muted-foreground">
-        In production, each person would sign in with their own account. For now this attaches the
-        invite to the dev mock user.
+        You must be signed in with your Leitmotif account to join this project.
       </p>
     </div>
   )

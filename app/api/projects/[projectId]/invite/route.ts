@@ -9,23 +9,31 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getProject, createProjectMember, getProjectMembers, uid } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
 
   const { email, role } = await req.json()
   if (!email || !role) {
     return NextResponse.json({ error: 'email and role required' }, { status: 400 })
   }
 
+  const denied = await assertProjectAccess(user, projectId)
+  if (denied) return denied
+
   const project = await getProject(projectId)
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  if (project.owner_id !== user.id) {
+    return NextResponse.json({ error: 'Only the project owner can invite' }, { status: 403 })
   }
 
   const existing = await getProjectMembers(projectId)

@@ -15,7 +15,7 @@ A director uploads a scene clip, tags emotional intent using a controlled vocabu
 | Data store | **PostgreSQL** via **Prisma** ([`prisma/schema.prisma`](prisma/schema.prisma), [`lib/store.ts`](lib/store.ts)) |
 | File storage | **Cloudflare R2** (S3 API) when `R2_*` env vars are set; otherwise **local disk** `.data/uploads/` and `/api/files/` ([`lib/storage.ts`](lib/storage.ts)) |
 | AI music generation | Stability AI — Stable Audio 2.5 (optional; silent WAV mock if no key) |
-| Auth (current) | Single **mock user** ([`lib/mock-auth.ts`](lib/mock-auth.ts)) — no sign-in UI |
+| Auth | **[Better Auth](https://www.better-auth.com)** — email/password; sessions + users in Postgres ([`lib/auth.ts`](lib/auth.ts), [`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)); app [`Profile`](prisma/schema.prisma) synced by email on sign-in ([`lib/session.ts`](lib/session.ts)) |
 
 ---
 
@@ -37,14 +37,33 @@ DATABASE_URL="postgresql://..."
 DIRECT_URL="postgresql://..."   # often same as DATABASE_URL; use direct host for migrations if using a pooler
 ```
 
-Apply schema:
+Apply schema (includes Better Auth `user` / `session` / `account` / `verification` tables):
 
 ```bash
 npx prisma migrate dev
 # or: npx prisma db push
 ```
 
-### 3. Environment (optional)
+### 3. Better Auth (required)
+
+Add to `.env.local` (see [`.env.example`](.env.example)):
+
+- **`BETTER_AUTH_SECRET`** — at least 32 random bytes (e.g. `openssl rand -base64 32`). **Required in production.**
+- **`BETTER_AUTH_URL`** — app origin (e.g. `http://localhost:3000`). Used for callbacks and CSRF.
+
+Then open **`/sign-up`** to create the first account, or **`/sign-in`** to log in. The app shell under `/projects` requires a session.
+
+If you previously used the mock dev user (`mock-user-01`), existing projects still point at that profile id. To **log in with Better Auth** and keep the same data, run:
+
+```bash
+npm run ensure:director-auth
+```
+
+That upserts profile `mock-user-01` / `director@local.dev`, recreates the Better Auth user for that email, and prints a dev password (override with `DIRECTOR_DEV_PASSWORD` in `.env.local`). Then use **`/sign-in`** with that email and password — [`lib/session.ts`](lib/session.ts) ties the session to the existing `Profile` by email, so `owner_id = mock-user-01` projects remain visible.
+
+Alternatively reassign `owner_id` in the database to your other account’s profile id, or create new projects under that account.
+
+### 4. Environment (optional)
 
 - **`STABILITY_API_KEY`** — real Stable Audio mock cues. Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY` and the UI shows “Calling Stable Audio…”.
 - **`NEXT_PUBLIC_APP_URL`** — base URL for invite links (e.g. `http://localhost:3000`). Defaults to request origin when unset in some flows.
@@ -60,7 +79,7 @@ npm run test:stable-audio
 
 Writes `scripts/out-test-stable-audio.wav` and prints `stable_api` vs `silent_mock`.
 
-### 4. Run
+### 5. Run
 
 ```bash
 npm run dev
@@ -145,7 +164,10 @@ components/
 
 lib/
   store.ts                       Prisma data access
-  mock-auth.ts                   Dev-only single user
+  auth.ts                        Better Auth server instance
+  auth-client.ts                 Better Auth React client
+  session.ts                     Session → Profile sync (by email)
+  api-auth.ts                    API route session + project access helpers
   storage.ts                     R2 + local disk; read/write helpers
   generation/runGenerationJob.ts Shared Stable Audio → storage → DB pipeline
   videoDuration.ts               Server-side duration via music-metadata (no ffprobe)
@@ -165,7 +187,7 @@ These are **called out in code (TODO)** and matter for a real deployment:
 |------|------------------|--------|
 | **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
 | **File hosting** | **R2** + same-origin `/api/files` streaming; local disk in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
-| **Auth** | Mock user on every request | NextAuth / Lucia / Clerk — [`lib/mock-auth.ts`](lib/mock-auth.ts) |
+| **Auth** | Better Auth email/password + Postgres sessions | Optional: OAuth providers, magic link, orgs — [`lib/auth.ts`](lib/auth.ts) |
 | **Invites & briefs** | Magic link + manual URL share | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), approve route |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 

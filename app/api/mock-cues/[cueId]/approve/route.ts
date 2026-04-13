@@ -7,14 +7,18 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getMockCue, getMockCues, updateMockCue, updateSceneCard, now } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession, assertMockCueAccess } from '@/lib/api-auth'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ cueId: string }> }
 ) {
   const { cueId } = await params
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
+
+  const denied = await assertMockCueAccess(user, cueId)
+  if (denied) return denied
 
   const cue = await getMockCue(cueId)
   if (!cue) return NextResponse.json({ error: 'Not found' }, { status: 404 })
