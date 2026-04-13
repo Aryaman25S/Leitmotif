@@ -118,15 +118,23 @@ export default function ProjectSettingsPage() {
     if (!res.ok) {
       toast.error(data.error ?? 'Failed to send invite')
     } else {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      const path = data.invitePath as string | undefined
-      const absolute =
-        (data.inviteUrl as string | undefined) ||
-        (path && origin ? `${origin}${path}` : path)
-      if (absolute) {
-        toast.success(`Invite created for ${inviteEmail}. Share this link: ${absolute}`)
+      const emailSent = Boolean(data.emailSent)
+      const emailWarning = typeof data.emailWarning === 'string' ? data.emailWarning : undefined
+      if (emailSent) {
+        toast.success(`Invite email sent to ${inviteEmail.trim()}`)
+      } else if (emailWarning) {
+        toast.success('Invite saved', { description: emailWarning })
       } else {
-        toast.success(`Invited ${inviteEmail}`)
+        const origin = typeof window !== 'undefined' ? window.location.origin : ''
+        const path = data.invitePath as string | undefined
+        const absolute =
+          (data.inviteUrl as string | undefined) ||
+          (path && origin ? `${origin}${path}` : path)
+        if (absolute) {
+          toast.success(`Invite created for ${inviteEmail}. Share this link: ${absolute}`)
+        } else {
+          toast.success(`Invited ${inviteEmail}`)
+        }
       }
       setInviteEmail('')
       // Refresh member list

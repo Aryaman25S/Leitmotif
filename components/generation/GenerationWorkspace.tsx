@@ -92,10 +92,20 @@ export default function GenerationWorkspace({
   async function handleApprove(cueId: string) {
     setApproving(cueId)
     const res = await fetch(`/api/mock-cues/${cueId}/approve`, { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       toast.error('Failed to approve cue')
     } else {
-      toast.success('Cue approved — open the brief link to share with your composer')
+      const briefEmailSent = Boolean(data.briefEmailSent)
+      const briefEmailWarning =
+        typeof data.briefEmailWarning === 'string' ? data.briefEmailWarning : undefined
+      if (briefEmailSent) {
+        toast.success('Cue approved — brief link emailed to collaborators')
+      } else if (briefEmailWarning) {
+        toast.success('Cue approved', { description: briefEmailWarning })
+      } else {
+        toast.success('Cue approved — open the brief link to share with your composer')
+      }
       setMockCues((prev) =>
         prev.map((c) => c.id === cueId
           // approve this cue; un-approve any previously approved one so there's
