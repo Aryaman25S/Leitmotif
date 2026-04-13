@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { nextCookies } from 'better-auth/next-js'
 import { prisma } from './prisma'
+import { getSocialProvidersConfig } from './oauth-providers'
 
 const baseURL =
   process.env.BETTER_AUTH_URL?.replace(/\/$/, '') ||
@@ -17,11 +18,15 @@ if (process.env.NODE_ENV === 'production' && secret === DEV_AUTH_SECRET_PLACEHOL
   )
 }
 
+const socialProviders = getSocialProvidersConfig()
+const hasSocialProviders = Object.keys(socialProviders).length > 0
+
 export const auth = betterAuth({
   baseURL,
   secret,
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: { enabled: true },
+  ...(hasSocialProviders ? { socialProviders } : {}),
   trustedOrigins: [baseURL],
   plugins: [nextCookies()],
 })

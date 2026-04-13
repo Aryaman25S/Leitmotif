@@ -15,7 +15,7 @@ A director uploads a scene clip, tags emotional intent using a controlled vocabu
 | Data store | **PostgreSQL** via **Prisma** ([`prisma/schema.prisma`](prisma/schema.prisma), [`lib/store.ts`](lib/store.ts)) |
 | File storage | **Cloudflare R2** (S3 API) when `R2_*` env vars are set; otherwise **local disk** `.data/uploads/` and `/api/files/` ([`lib/storage.ts`](lib/storage.ts)) |
 | AI music generation | Stability AI — Stable Audio 2.5 (optional; silent WAV mock if no key) |
-| Auth | **[Better Auth](https://www.better-auth.com)** — email/password; sessions + users in Postgres ([`lib/auth.ts`](lib/auth.ts), [`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)); app [`Profile`](prisma/schema.prisma) synced by email on sign-in ([`lib/session.ts`](lib/session.ts)) |
+| Auth | **[Better Auth](https://www.better-auth.com)** — email/password and optional **Google / GitHub OAuth** ([`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts)); sessions + users in Postgres ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)); app [`Profile`](prisma/schema.prisma) synced by email on sign-in ([`lib/session.ts`](lib/session.ts)) |
 
 ---
 
@@ -52,6 +52,8 @@ Add to `.env.local` (see [`.env.example`](.env.example)):
 - **`BETTER_AUTH_URL`** — app origin (e.g. `http://localhost:3000`). Used for callbacks and CSRF.
 
 Then open **`/sign-up`** to create the first account, or **`/sign-in`** to log in. The app shell under `/projects` requires a session.
+
+**OAuth (optional):** Set both `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and/or `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` in `.env.local` (see [`.env.example`](.env.example)). In each provider’s developer console, register the redirect URL **`{BETTER_AUTH_URL}/api/auth/callback/google`** or **`.../callback/github`** (same origin as `BETTER_AUTH_URL`, e.g. production `https://www.example.com/api/auth/callback/google`). Restart the dev server after changing env. Sign-in and sign-up pages show “Continue with …” only for providers that are configured.
 
 If you previously used the mock dev user (`mock-user-01`), existing projects still point at that profile id. To **log in with Better Auth** and keep the same data, run:
 

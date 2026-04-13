@@ -1,5 +1,7 @@
 import SignUpForm from './SignUpForm'
+import { getEnabledOAuthProviderIds } from '@/lib/oauth-providers'
 
 export default function SignUpPage() {
-  return <SignUpForm />
+  const oauthProviders = getEnabledOAuthProviderIds()
+  return <SignUpForm oauthProviders={oauthProviders} />
 }
