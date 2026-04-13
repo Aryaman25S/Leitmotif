@@ -87,7 +87,7 @@ Writes `scripts/out-test-stable-audio.wav` and prints `stable_api` vs `silent_mo
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — the app runs without sign-in (mock user).
+Open [http://localhost:3000](http://localhost:3000). The **home page** (`/`) is public. Everything under **`/projects`** (and other routes in the signed-in shell) **requires a session** — use **`/sign-in`** or **`/sign-up`** first. Public composer briefs at **`/brief/[mockCueId]`** stay readable without auth once a cue is approved.
 
 ---
 
@@ -121,7 +121,7 @@ On approval → composer brief URL (/brief/[cueId])
   • Print / save as PDF (browser print)
 ```
 
-**Brief delivery:** Approving unlocks **`/brief/[mockCueId]`**. There is **no email to the composer** in this repo yet — copy the link from the scene workspace. Project invites use a **magic link** (`/invite/[token]`) when you share the token returned after inviting (email integration is still TODO).
+**Brief delivery:** Approving unlocks **`/brief/[mockCueId]`**. There is **no email to the composer** in this repo yet — copy the link from the scene workspace. **Project invites** use a **token URL** (`/invite/[token]`): you share the link (or token) returned by the invite API so the collaborator can accept **after they sign in**; this is membership onboarding, not passwordless account login. **Transactional email** for invites (and optional “brief ready” notices) is still TODO.
 
 ---
 
@@ -146,7 +146,7 @@ app/
     projects/[id]/               Scene card list
     projects/[id]/scenes/[id]/   Core scene editor (intent + generation)
     projects/[id]/settings/      Project settings + team invite
-  invite/[token]/                Accept project invite (magic link)
+  invite/[token]/                Accept project invite (token URL; user must be signed in)
   brief/[cueId]/                 Composer brief (public, no auth)
   api/
     projects/                    CRUD + invite
@@ -189,8 +189,8 @@ These are **called out in code (TODO)** and matter for a real deployment:
 |------|------------------|--------|
 | **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
 | **File hosting** | **R2** + same-origin `/api/files` streaming; local disk in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
-| **Auth** | Better Auth email/password + Postgres sessions | Optional: OAuth providers, magic link, orgs — [`lib/auth.ts`](lib/auth.ts) |
-| **Invites & briefs** | Magic link + manual URL share | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), approve route |
+| **Auth** | Better Auth **email/password** + optional **Google / GitHub OAuth**; Postgres sessions; app [`Profile`](prisma/schema.prisma) synced by email — [`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts) | Optional: org-style features beyond `ProjectMember`, stricter **email verification** if required. **Passwordless magic-link sign-in** is not planned (OAuth + email/password are enough). |
+| **Invites & briefs** | Invite **token URL** + manual copy of brief URL | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), [`app/api/mock-cues/[cueId]/approve/route.ts`](app/api/mock-cues/[cueId]/approve/route.ts) |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 
 ---
