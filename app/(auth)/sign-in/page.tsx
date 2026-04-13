@@ -1,7 +1,9 @@
 import { Suspense } from 'react'
 import SignInForm from './SignInForm'
+import { getEnabledOAuthProviderIds } from '@/lib/oauth-providers'
 
 export default function SignInPage() {
+  const oauthProviders = getEnabledOAuthProviderIds()
   return (
     <Suspense
       fallback={
@@ -10,7 +12,7 @@ export default function SignInPage() {
         </div>
       }
     >
-      <SignInForm />
+      <SignInForm oauthProviders={oauthProviders} />
     </Suspense>
   )
 }
