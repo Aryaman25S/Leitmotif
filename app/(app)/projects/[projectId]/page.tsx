@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import { getProject, getSceneCards } from '@/lib/store'
-import { notFound } from 'next/navigation'
+import { getProject, getSceneCards, profileCanAccessProject } from '@/lib/store'
+import { notFound, redirect } from 'next/navigation'
+import { getSessionProfile } from '@/lib/session'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +30,12 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
+  const profile = await getSessionProfile()
+  if (!profile) redirect('/sign-in')
+
+  const canAccess = await profileCanAccessProject(profile.id, projectId)
+  if (!canAccess) notFound()
+
   const project = await getProject(projectId)
   if (!project) notFound()
 

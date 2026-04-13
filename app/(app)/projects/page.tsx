@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import { getProjects } from '@/lib/store'
+import { getProjectsForProfile } from '@/lib/store'
+import { getSessionProfile } from '@/lib/session'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,7 +17,10 @@ const FORMAT_META: Record<string, { label: string; Icon: typeof Film }> = {
 }
 
 export default async function ProjectsPage() {
-  const projects = await getProjects()
+  const profile = await getSessionProfile()
+  if (!profile) redirect('/sign-in')
+
+  const projects = await getProjectsForProfile(profile.id)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">

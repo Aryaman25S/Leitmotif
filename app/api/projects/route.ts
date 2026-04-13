@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createProject, upsertGenerationSettings } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
   const { title, format, tone_brief } = await req.json()
 
   if (!title?.trim()) {

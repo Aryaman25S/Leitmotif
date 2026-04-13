@@ -12,7 +12,7 @@ import {
   createJob,
   updateSceneCard,
 } from '@/lib/store'
-import { getMockUser } from '@/lib/mock-auth'
+import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
 import { runGenerationJob } from '@/lib/generation/runGenerationJob'
 import { inngest } from '@/inngest/client'
 
@@ -25,7 +25,11 @@ export async function POST(
   { params }: { params: Promise<{ sceneId: string }> }
 ) {
   const { sceneId } = await params
-  const user = getMockUser()
+  const user = await requireApiSession(req)
+  if (user instanceof NextResponse) return user
+
+  const denied = await assertSceneAccess(user, sceneId)
+  if (denied) return denied
 
   const { intentVersionId } = await req.json()
   if (!intentVersionId) {

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { authClient } from '@/lib/auth-client'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,15 @@ interface AppNavProps {
 
 export default function AppNav({ user, projectTitle }: AppNavProps) {
   const pathname = usePathname()
+
+  async function handleSignOut() {
+    try {
+      await authClient.signOut()
+    } catch {
+      // Still hard-navigate so cookie/session client state cannot strand the user on /projects.
+    }
+    window.location.assign('/')
+  }
 
   // Derive project context from the URL when no explicit title is passed
   const projectMatch = pathname.match(/^\/projects\/([^/]+)/)
@@ -56,10 +66,7 @@ export default function AppNav({ user, projectTitle }: AppNavProps) {
             <DropdownMenuItem className="text-xs text-muted-foreground" disabled>
               {user.email}
             </DropdownMenuItem>
-            <DropdownMenuItem disabled>
-              {/* TODO: Add sign out when real auth is connected */}
-              Local dev mode
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void handleSignOut()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
