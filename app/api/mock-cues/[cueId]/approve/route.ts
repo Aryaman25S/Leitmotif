@@ -1,13 +1,26 @@
 /**
  * POST /api/mock-cues/[cueId]/approve
  *
- * Marks the cue as approved and exposes /brief/[cueId]. Delivery is link-based only —
- * add email/Slack notification here for production.
+ * Marks the cue as approved and exposes /brief/[cueId]. Optionally emails composer /
+ * music-supervisor members when Resend is configured.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getMockCue, getMockCues, updateMockCue, updateSceneCard, now } from '@/lib/store'
+import {
+  getMockCue,
+  getMockCues,
+  updateMockCue,
+  updateSceneCard,
+  now,
+  getSceneCard,
+  getProject,
+  getMemberEmailsByRoles,
+} from '@/lib/store'
 import { requireApiSession, assertMockCueAccess } from '@/lib/api-auth'
+import { buildAppUrl } from '@/lib/public-url'
+import { isResendConfigured, shouldSendBriefEmails, sendBriefReadyEmail } from '@/lib/mail/resend'
+
+const BRIEF_NOTIFY_ROLES = ['composer', 'music_supervisor'] as const
 
 export async function POST(
   req: NextRequest,
@@ -23,8 +36,6 @@ export async function POST(
   const cue = await getMockCue(cueId)
   if (!cue) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Un-approve any previously approved cues for this scene so there is always
-  // exactly one active brief at a time
   const siblings = await getMockCues(cue.scene_card_id)
   await Promise.all(
     siblings
@@ -40,7 +51,43 @@ export async function POST(
 
   await updateSceneCard(cue.scene_card_id, { status: 'brief_sent' })
 
-  // TODO: production — notify composer (e.g. Resend) with brief URL; optional Slack webhook.
+  const scene = await getSceneCard(cue.scene_card_id)
+  const project = scene ? await getProject(scene.project_id) : undefined
 
-  return NextResponse.json({ ok: true })
+  let briefEmailSent = false
+  let briefEmailWarning: string | undefined
+
+  if (isResendConfigured() && shouldSendBriefEmails() && scene && project) {
+    const briefPath = `/brief/${cueId}`
+    const briefUrl = buildAppUrl(briefPath, req)
+    const recipients = await getMemberEmailsByRoles(scene.project_id, BRIEF_NOTIFY_ROLES)
+    const others = recipients.filter((e) => e !== user.email.trim().toLowerCase())
+
+    if (!briefUrl) {
+      briefEmailWarning =
+        'Brief approved but email not sent: set NEXT_PUBLIC_APP_URL or BETTER_AUTH_URL so the brief link can be included.'
+    } else if (others.length === 0) {
+      briefEmailWarning =
+        'Brief approved; no composer or music-supervisor recipients with an email (other than you) were found.'
+    } else {
+      const send = await sendBriefReadyEmail({
+        to: others,
+        projectTitle: project.title,
+        sceneLabel: scene.label,
+        briefUrl,
+      })
+      if (send.ok) {
+        briefEmailSent = true
+      } else {
+        briefEmailWarning = `Brief approved but email failed: ${send.message}`
+        console.warn('[approve] Resend:', send.message)
+      }
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    briefEmailSent,
+    ...(briefEmailWarning ? { briefEmailWarning } : {}),
+  })
 }

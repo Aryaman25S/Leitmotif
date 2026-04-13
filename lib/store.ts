@@ -329,6 +329,23 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
   }))
 }
 
+/** Distinct lowercased emails for members whose `role_on_project` is in `roles`. Uses `profile.email` when linked, else pending `invite_email`. */
+export async function getMemberEmailsByRoles(
+  projectId: string,
+  roles: readonly string[]
+): Promise<string[]> {
+  const roleSet = new Set(roles)
+  const members = await getProjectMembers(projectId)
+  const emails = new Set<string>()
+  for (const m of members) {
+    if (!roleSet.has(m.role_on_project)) continue
+    const raw = m.profile?.email ?? m.invite_email
+    const addr = raw?.trim().toLowerCase()
+    if (addr && addr.includes('@')) emails.add(addr)
+  }
+  return [...emails]
+}
+
 export async function createProjectMember(
   data: Omit<ProjectMember, 'id' | 'invited_at' | 'profile'>
 ): Promise<ProjectMember> {

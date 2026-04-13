@@ -1,15 +1,19 @@
 /**
  * POST /api/projects/[projectId]/invite
  *
- * Invite a collaborator to a project.
- * In local dev, just creates the project_member record — no email is sent.
- *
- * TODO: In production, send invite email via Resend.
+ * Invite a collaborator to a project. Creates the pending `project_member` row.
+ * When `RESEND_API_KEY` and `RESEND_FROM` are set, sends an invite email with the accept link.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getProject, createProjectMember, getProjectMembers, uid } from '@/lib/store'
 import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
+import { buildAppUrl } from '@/lib/public-url'
+import { isResendConfigured, sendProjectInviteEmail } from '@/lib/mail/resend'
+
+function formatRoleLabel(role: string): string {
+  return role.replace(/_/g, ' ')
+}
 
 export async function POST(
   req: NextRequest,
@@ -51,15 +55,34 @@ export async function POST(
     accepted_at: null,
   })
 
-  // TODO: In production, send invite email here (Resend or similar) with magic link.
-  console.log(`[invite] ${user.email} invited ${email} as ${role} to "${project.title}"`)
-
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
-    (typeof process.env.VERCEL_URL === 'string' ? `https://${process.env.VERCEL_URL}` : '')
-
   const invitePath = member.magic_token ? `/invite/${member.magic_token}` : null
-  const inviteUrl = base && invitePath ? `${base}${invitePath}` : invitePath
+  const inviteUrl = invitePath ? buildAppUrl(invitePath, req) : null
+
+  let emailSent = false
+  let emailWarning: string | undefined
+
+  if (isResendConfigured()) {
+    if (!inviteUrl) {
+      emailWarning =
+        'Invite saved but email not sent: set NEXT_PUBLIC_APP_URL or BETTER_AUTH_URL (or rely on VERCEL_URL) so the accept link can be included.'
+    } else {
+      const inviterDisplay = (user.name?.trim() || user.email).trim()
+      const send = await sendProjectInviteEmail({
+        to: email.trim(),
+        projectTitle: project.title,
+        inviterDisplay,
+        inviterEmail: user.email,
+        inviteUrl,
+        roleLabel: formatRoleLabel(role),
+      })
+      if (send.ok) {
+        emailSent = true
+      } else {
+        emailWarning = `Invite saved but email failed: ${send.message}`
+        console.warn('[invite] Resend:', send.message)
+      }
+    }
+  }
 
   return NextResponse.json({
     ok: true,
@@ -67,5 +90,7 @@ export async function POST(
     invitePath,
     inviteUrl: inviteUrl ?? null,
     projectId,
+    emailSent,
+    ...(emailWarning ? { emailWarning } : {}),
   })
 }

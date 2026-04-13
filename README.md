@@ -2,7 +2,7 @@
 
 **Translate directorial intent into actionable music direction.**
 
-A director uploads a scene clip, tags emotional intent using a controlled vocabulary, and triggers an AI-generated mock cue that concretises the direction. Once approved, a **shareable composer brief** (public URL) bundles the structured spec and reference audio — closing the gap between "it should feel like loss" and direction a composer can execute. **Email delivery is not wired yet**; you share the brief link manually (see [Application flow](#application-flow)).
+A director uploads a scene clip, tags emotional intent using a controlled vocabulary, and triggers an AI-generated mock cue that concretises the direction. Once approved, a **shareable composer brief** (public URL) bundles the structured spec and reference audio — closing the gap between "it should feel like loss" and direction a composer can execute. **Optional email** (Resend): project invites and brief-ready notices when env is configured; otherwise share links manually (see [Application flow](#application-flow)).
 
 ---
 
@@ -68,7 +68,8 @@ Alternatively reassign `owner_id` in the database to your other account’s prof
 ### 4. Environment (optional)
 
 - **`STABILITY_API_KEY`** — real Stable Audio mock cues. Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY` and the UI shows “Calling Stable Audio…”.
-- **`NEXT_PUBLIC_APP_URL`** — base URL for invite links (e.g. `http://localhost:3000`). Defaults to request origin when unset in some flows.
+- **`NEXT_PUBLIC_APP_URL`** — base URL for invite and brief links in emails and JSON (e.g. `http://localhost:3000`). On Vercel, `VERCEL_URL` is used when this and `BETTER_AUTH_URL` are unset.
+- **`RESEND_API_KEY`** / **`RESEND_FROM`** — when both are set, [Resend](https://resend.com) sends **project invite** emails and **brief-ready** emails to composer / music-supervisor members (see [`.env.example`](.env.example)). Set **`RESEND_BRIEF_EMAILS=false`** to turn off brief emails only.
 - **`R2_*`** — Cloudflare R2 for uploads in production (see [`.env.example`](.env.example)).
 - **`INNGEST_EVENT_KEY`** / **`INNGEST_SIGNING_KEY`** — optional; when set, mock-cue generation runs on [Inngest](https://www.inngest.com/) instead of only `after()` on the same serverless invocation ([`app/api/inngest/route.ts`](app/api/inngest/route.ts)).
 - **`NEXT_DEV_ALLOWED_ORIGINS`** — optional; comma-separated hostnames when opening dev from a LAN IP (see [`next.config.ts`](next.config.ts)).
@@ -121,7 +122,7 @@ On approval → composer brief URL (/brief/[cueId])
   • Print / save as PDF (browser print)
 ```
 
-**Brief delivery:** Approving unlocks **`/brief/[mockCueId]`**. There is **no email to the composer** in this repo yet — copy the link from the scene workspace. **Project invites** use a **token URL** (`/invite/[token]`): you share the link (or token) returned by the invite API so the collaborator can accept **after they sign in**; this is membership onboarding, not passwordless account login. **Transactional email** for invites (and optional “brief ready” notices) is still TODO.
+**Brief delivery:** Approving unlocks **`/brief/[mockCueId]`**. There is **no email to the composer** in this repo yet — copy the link from the scene workspace. **Project invites** use a **token URL** (`/invite/[token]`): you share the link (or token) returned by the invite API so the collaborator can accept **after they sign in**; this is membership onboarding, not passwordless account login. **Transactional email:** when **`RESEND_API_KEY`** and **`RESEND_FROM`** are set, invite and brief-ready messages are sent via [Resend](https://resend.com); otherwise copy links manually as before.
 
 ---
 
@@ -166,6 +167,8 @@ components/
 
 lib/
   store.ts                       Prisma data access
+  public-url.ts                  Origin for invite/brief links (env + request)
+  mail/resend.ts                 Optional Resend invite + brief emails
   auth.ts                        Better Auth server instance
   auth-client.ts                 Better Auth React client
   session.ts                     Session → Profile sync (by email)
@@ -190,7 +193,7 @@ These are **called out in code (TODO)** and matter for a real deployment:
 | **Generation jobs** | `after()` on Vercel; optional **Inngest** when `INNGEST_EVENT_KEY` is set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts) | Long-term: keep Inngest or add observability / retries in the dashboard |
 | **File hosting** | **R2** + same-origin `/api/files` streaming; local disk in dev | Pre-signed **browser → R2** uploads (smaller API payloads) — upload init route TODO |
 | **Auth** | Better Auth **email/password** + optional **Google / GitHub OAuth**; Postgres sessions; app [`Profile`](prisma/schema.prisma) synced by email — [`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts) | Optional: org-style features beyond `ProjectMember`, stricter **email verification** if required. **Passwordless magic-link sign-in** is not planned (OAuth + email/password are enough). |
-| **Invites & briefs** | Invite **token URL** + manual copy of brief URL | Resend (or similar) for invite + “brief ready” email — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), [`app/api/mock-cues/[cueId]/approve/route.ts`](app/api/mock-cues/[cueId]/approve/route.ts) |
+| **Invites & briefs** | With **Resend** env (`RESEND_API_KEY`, `RESEND_FROM`): invite + brief-ready emails from those routes; always returns shareable URLs in JSON | Tune copy, `RESEND_REPLY_TO`, deliverability, and **`RESEND_BRIEF_EMAILS`** — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), [`app/api/mock-cues/[cueId]/approve/route.ts`](app/api/mock-cues/[cueId]/approve/route.ts), [`lib/mail/resend.ts`](lib/mail/resend.ts) |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 
 ---
