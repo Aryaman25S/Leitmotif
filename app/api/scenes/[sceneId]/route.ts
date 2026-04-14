@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectScene } from '@/lib/api-auth'
 
 export async function DELETE(
   req: NextRequest,
@@ -10,7 +10,7 @@ export async function DELETE(
   const profile = await requireApiSession(req)
   if (profile instanceof NextResponse) return profile
 
-  const denied = await assertSceneAccess(profile, sceneId)
+  const denied = await assertCanDirectScene(profile, sceneId)
   if (denied) return denied
 
   try {

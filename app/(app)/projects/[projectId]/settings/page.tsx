@@ -54,6 +54,7 @@ export default function ProjectSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [viewerIsOwner, setViewerIsOwner] = useState(false)
+  const [viewerCanDirect, setViewerCanDirect] = useState(false)
 
   useEffect(() => {
     fetch(`/api/projects/${projectId}`)
@@ -72,6 +73,8 @@ export default function ProjectSettingsPage() {
         }
         if (data.members) setMembers(data.members)
         if (typeof data.viewerIsOwner === 'boolean') setViewerIsOwner(data.viewerIsOwner)
+        const role = data.viewerRole as string | null
+        setViewerCanDirect(role === 'owner' || role === 'director')
         setLoaded(true)
       })
   }, [projectId])
@@ -189,26 +192,28 @@ export default function ProjectSettingsPage() {
             <CardDescription>Basic information about the production.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="format">Format</Label>
-              <Select value={format} onValueChange={(v) => v && setFormat(v)}>
-                <SelectTrigger id="format"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="feature">Feature film</SelectItem>
-                  <SelectItem value="episodic">Episodic / TV</SelectItem>
-                  <SelectItem value="short">Short film</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tone">Tone brief</Label>
-              <Textarea id="tone" value={toneBrief} onChange={(e) => setToneBrief(e.target.value)} rows={3} className="resize-none" />
-            </div>
+            <fieldset disabled={!viewerCanDirect} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="format">Format</Label>
+                <Select value={format} onValueChange={(v) => v && setFormat(v)} disabled={!viewerCanDirect}>
+                  <SelectTrigger id="format"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="feature">Feature film</SelectItem>
+                    <SelectItem value="episodic">Episodic / TV</SelectItem>
+                    <SelectItem value="short">Short film</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tone">Tone brief</Label>
+                <Textarea id="tone" value={toneBrief} onChange={(e) => setToneBrief(e.target.value)} rows={3} className="resize-none" />
+              </div>
+            </fieldset>
           </CardContent>
         </Card>
 
@@ -218,46 +223,49 @@ export default function ProjectSettingsPage() {
             <CardDescription>Applied to all mock cue generation in this project.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div>
-              <Label className="text-sm mb-3 block">Instrumentation palette</Label>
-              <div className="flex flex-wrap gap-2">
-                {INSTRUMENTATION_OPTIONS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => toggleInstrumentation(key)}
-                    className={cn(
-                      'text-xs px-3 py-1.5 rounded-full border transition-colors',
-                      instrumentation.includes(key)
-                        ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_10px_-2px] shadow-primary/40'
-                        : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <fieldset disabled={!viewerCanDirect} className="space-y-5">
+              <div>
+                <Label className="text-sm mb-3 block">Instrumentation palette</Label>
+                <div className="flex flex-wrap gap-2">
+                  {INSTRUMENTATION_OPTIONS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => toggleInstrumentation(key)}
+                      disabled={!viewerCanDirect}
+                      className={cn(
+                        'text-xs px-3 py-1.5 rounded-full border transition-colors',
+                        instrumentation.includes(key)
+                          ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_10px_-2px] shadow-primary/40'
+                          : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="era">Era / style reference</Label>
-              <Input id="era" placeholder="e.g. 1970s neo-noir, post-minimalist" value={eraReference} onChange={(e) => setEraReference(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="budget">Budget reality</Label>
-              <Select value={budgetReality} onValueChange={(v) => v && setBudgetReality(v)}>
-                <SelectTrigger id="budget"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full_orchestra">Full orchestra</SelectItem>
-                  <SelectItem value="small_ensemble">Small ensemble</SelectItem>
-                  <SelectItem value="solo_duo">Solo / duo</SelectItem>
-                  <SelectItem value="electronic_only">Electronic only</SelectItem>
-                  <SelectItem value="hybrid">Hybrid (default)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="do-not">Do not generate (project-wide)</Label>
-              <Textarea id="do-not" placeholder="e.g. No ethnic clichés. No sad violins." value={doNotGenerate} onChange={(e) => setDoNotGenerate(e.target.value)} rows={2} className="resize-none text-sm" />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="era">Era / style reference</Label>
+                <Input id="era" placeholder="e.g. 1970s neo-noir, post-minimalist" value={eraReference} onChange={(e) => setEraReference(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="budget">Budget reality</Label>
+                <Select value={budgetReality} onValueChange={(v) => v && setBudgetReality(v)} disabled={!viewerCanDirect}>
+                  <SelectTrigger id="budget"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_orchestra">Full orchestra</SelectItem>
+                    <SelectItem value="small_ensemble">Small ensemble</SelectItem>
+                    <SelectItem value="solo_duo">Solo / duo</SelectItem>
+                    <SelectItem value="electronic_only">Electronic only</SelectItem>
+                    <SelectItem value="hybrid">Hybrid (default)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="do-not">Do not generate (project-wide)</Label>
+                <Textarea id="do-not" placeholder="e.g. No ethnic clichés. No sad violins." value={doNotGenerate} onChange={(e) => setDoNotGenerate(e.target.value)} rows={2} className="resize-none text-sm" />
+              </div>
+            </fieldset>
           </CardContent>
         </Card>
 
@@ -328,9 +336,11 @@ export default function ProjectSettingsPage() {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? 'Saving…' : 'Save settings'}
-        </Button>
+        {viewerCanDirect && (
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving ? 'Saving…' : 'Save settings'}
+          </Button>
+        )}
 
         {/* Danger zone */}
         <Card className="border-destructive/40">

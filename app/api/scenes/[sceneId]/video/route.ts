@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSceneCard } from '@/lib/store'
-import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectScene } from '@/lib/api-auth'
 import { readFileBuffer } from '@/lib/storage'
 import { probeVideoDurationSec } from '@/lib/videoDuration'
 
@@ -22,7 +22,7 @@ export async function PATCH(
   const profile = await requireApiSession(req)
   if (profile instanceof NextResponse) return profile
 
-  const denied = await assertSceneAccess(profile, sceneId)
+  const denied = await assertCanDirectScene(profile, sceneId)
   if (denied) return denied
 
   const { fileKey, durationSec: clientDurationSec } = await req.json()

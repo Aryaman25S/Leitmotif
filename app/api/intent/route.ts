@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createIntentVersion, updateSceneCard } from '@/lib/store'
-import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectScene } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   const user = await requireApiSession(req)
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'scene_card_id required' }, { status: 400 })
   }
 
-  const denied = await assertSceneAccess(user, body.scene_card_id)
+  const denied = await assertCanDirectScene(user, body.scene_card_id)
   if (denied) return denied
 
   const iv = await createIntentVersion({

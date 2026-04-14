@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uid } from '@/lib/store'
 import path from 'path'
-import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectScene } from '@/lib/api-auth'
 import { getPresignedPutUrl, isR2StorageEnabled } from '@/lib/storage'
 
 export async function POST(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const denied = await assertSceneAccess(profile, sceneId)
+  const denied = await assertCanDirectScene(profile, sceneId)
   if (denied) return denied
 
   const ext = path.extname(fileName).toLowerCase() || '.bin'

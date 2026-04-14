@@ -3,10 +3,17 @@
  *
  * Called by the composer from the /brief page.
  * Records that the composer has received and reviewed the brief.
+ *
+ * Allowed for:
+ * - Logged-in project members with composer/sound_designer role
+ * - Unauthenticated callers (public brief link IS the access control for
+ *   external composers who aren't in the system)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getMockCue, updateMockCue, now } from '@/lib/store'
+import { getSessionProfileFromRequest } from '@/lib/session'
+import { assertCanAcknowledgeCue } from '@/lib/api-auth'
 
 export async function POST(
   req: NextRequest,
@@ -18,6 +25,12 @@ export async function POST(
   const cue = await getMockCue(cueId)
   if (!cue || !cue.is_approved) {
     return NextResponse.json({ error: 'Not found or not approved' }, { status: 404 })
+  }
+
+  const profile = await getSessionProfileFromRequest(req)
+  if (profile) {
+    const denied = await assertCanAcknowledgeCue(profile, cueId)
+    if (denied) return denied
   }
 
   await updateMockCue(cueId, {

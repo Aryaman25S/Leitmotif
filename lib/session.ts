@@ -9,14 +9,12 @@ function mapProfile(row: {
   id: string
   name: string | null
   email: string
-  role_default: string | null
   created_at: Date
 }): Profile {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    role_default: row.role_default,
     created_at: row.created_at.toISOString(),
   }
 }
@@ -32,7 +30,6 @@ export async function syncProfileFromBetterAuthUser(user: {
     create: {
       email,
       name: user.name?.trim() || null,
-      role_default: 'director',
     },
     update: {
       ...(user.name != null && user.name.trim() !== ''
