@@ -80,6 +80,11 @@ export async function POST(
       data: payload,
     })
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn(
+        '[leitmotif] INNGEST_EVENT_KEY unset: generation runs via after(); set Inngest for reliable long jobs.'
+      )
+    }
     after(async () => {
       await runGenerationJob(payload)
     })

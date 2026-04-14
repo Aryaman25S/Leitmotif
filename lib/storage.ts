@@ -9,6 +9,7 @@ import {
   HeadObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 // ── R2 client (lazy singleton) ───────────────────────────────────────────────
 
@@ -17,6 +18,26 @@ const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? ''
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? ''
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME ?? ''
 const useR2 = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME)
+
+/** True when Cloudflare R2 (S3 API) is configured — enables direct browser PUT via presigned URL. */
+export function isR2StorageEnabled(): boolean {
+  return useR2
+}
+
+/** Presigned PUT URL so the browser uploads bytes directly to R2 (avoids large bodies on Next.js). */
+export async function getPresignedPutUrl(
+  fileKey: string,
+  contentType: string,
+  expiresInSec = 900
+): Promise<string | null> {
+  if (!useR2) return null
+  const cmd = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: fileKey,
+    ContentType: contentType,
+  })
+  return getSignedUrl(getS3(), cmd, { expiresIn: expiresInSec })
+}
 
 let _s3: S3Client | null = null
 function getS3(): S3Client {
