@@ -10,12 +10,14 @@ interface SceneVideoUploadProps {
   sceneId: string
   videoUrl: string | null
   durationSec: number | null
+  readOnly?: boolean
 }
 
 export default function SceneVideoUpload({
   sceneId,
   videoUrl: initialUrl,
   durationSec: initialDuration,
+  readOnly = false,
 }: SceneVideoUploadProps) {
   const [videoUrl, setVideoUrl] = useState<string | null>(initialUrl)
   const [durationSec, setDurationSec] = useState<number | null>(initialDuration)
@@ -156,18 +158,29 @@ export default function SceneVideoUpload({
           className="w-full h-full object-contain"
           preload="metadata"
         />
-        <button
-          onClick={handleRemove}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Remove video"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={handleRemove}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Remove video"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
         {durationSec && (
           <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded font-mono tabular-nums">
             {Math.floor(durationSec / 60)}:{String(durationSec % 60).padStart(2, '0')}
           </span>
         )}
+      </div>
+    )
+  }
+
+  if (readOnly) {
+    return (
+      <div className="relative aspect-video rounded-xl border border-border bg-card/30 flex flex-col items-center justify-center gap-3">
+        <Film className="h-8 w-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">No video uploaded</p>
       </div>
     )
   }

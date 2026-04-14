@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getProject, updateProject, getGenerationSettings, upsertGenerationSettings, getProjectMembers } from '@/lib/store'
-import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
+import { requireApiSession, assertProjectAccess, assertCanDirectProject, getProjectRole } from '@/lib/api-auth'
 
 export async function GET(
   req: NextRequest,
@@ -18,12 +18,14 @@ export async function GET(
 
   const settings = await getGenerationSettings(projectId)
   const members = await getProjectMembers(projectId)
+  const viewerRole = await getProjectRole(profile, projectId)
 
   return NextResponse.json({
     project,
     settings,
     members,
     viewerIsOwner: project.owner_id === profile.id,
+    viewerRole,
   })
 }
 
@@ -35,7 +37,7 @@ export async function PATCH(
   const profile = await requireApiSession(req)
   if (profile instanceof NextResponse) return profile
 
-  const denied = await assertProjectAccess(profile, projectId)
+  const denied = await assertCanDirectProject(profile, projectId)
   if (denied) return denied
 
   const body = await req.json()

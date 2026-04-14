@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic'
 
-import { getProjectsForProfile } from '@/lib/store'
+import { getProjectsWithRoleForProfile } from '@/lib/store'
 import { getSessionProfile } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 import { Plus, FolderOpen, Film, Tv, Clapperboard, Megaphone } from 'lucide-react'
+import { formatRoleLabel } from '@/lib/roles'
 
 const FORMAT_META: Record<string, { label: string; Icon: typeof Film }> = {
   feature:    { label: 'Feature',    Icon: Film },
@@ -20,7 +22,7 @@ export default async function ProjectsPage() {
   const profile = await getSessionProfile()
   if (!profile) redirect('/sign-in')
 
-  const projects = await getProjectsForProfile(profile.id)
+  const projects = await getProjectsWithRoleForProfile(profile.id)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -57,9 +59,14 @@ export default async function ProjectsPage() {
                 <Card className="hover:border-primary/40 transition-all cursor-pointer h-full group">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base font-medium leading-tight">
-                        {project.title}
-                      </CardTitle>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CardTitle className="text-base font-medium leading-tight truncate">
+                          {project.title}
+                        </CardTitle>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 capitalize">
+                          {formatRoleLabel(project.viewerRole)}
+                        </Badge>
+                      </div>
                       <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                         <FormatIcon className="h-3 w-3" />
                         {meta?.label ?? project.format}

@@ -12,12 +12,11 @@ const { prisma } = await import('../lib/prisma')
 const MOCK_ID = 'mock-user-01'
 const MOCK_EMAIL = 'director@local.dev'
 const MOCK_NAME = 'Local Director'
-const MOCK_ROLE = 'director'
 
 await prisma
   .$executeRaw`
-  INSERT INTO "Profile" ("id", "email", "name", "role_default", "created_at")
-  VALUES (${MOCK_ID}, ${MOCK_EMAIL}, ${MOCK_NAME}, ${MOCK_ROLE}, NOW())
+  INSERT INTO "Profile" ("id", "email", "name", "created_at")
+  VALUES (${MOCK_ID}, ${MOCK_EMAIL}, ${MOCK_NAME}, NOW())
   ON CONFLICT ("id") DO NOTHING
 `
   .then(() => console.log('ensure-mock-profile: upserted', MOCK_ID))

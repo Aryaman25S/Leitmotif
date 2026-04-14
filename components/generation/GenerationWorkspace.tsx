@@ -18,6 +18,8 @@ interface GenerationWorkspaceProps {
   latestJobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   hasIntent: boolean
   latestIntentId: string | null
+  canGenerate?: boolean
+  canApproveCue?: boolean
 }
 
 const STATUS_LABELS = {
@@ -34,6 +36,8 @@ export default function GenerationWorkspace({
   latestJobStatus: initialJobStatus,
   hasIntent,
   latestIntentId,
+  canGenerate = true,
+  canApproveCue = true,
 }: GenerationWorkspaceProps) {
   const router = useRouter()
   const [mockCues, setMockCues] = useState<MockCue[]>(initialCues)
@@ -149,40 +153,42 @@ export default function GenerationWorkspace({
       </div>
 
       {/* Generate / regenerate */}
-      <div>
-        <Button
-          onClick={handleGenerate}
-          disabled={!hasIntent || isActive || generating}
-          className={cn(
-            'w-full gap-2',
-            !mockCues.length && !isActive && !generating && 'bg-gradient-to-r from-primary to-primary/80 shadow-[0_0_12px_-3px] shadow-primary/25'
+      {canGenerate && (
+        <div>
+          <Button
+            onClick={handleGenerate}
+            disabled={!hasIntent || isActive || generating}
+            className={cn(
+              'w-full gap-2',
+              !mockCues.length && !isActive && !generating && 'bg-gradient-to-r from-primary to-primary/80 shadow-[0_0_12px_-3px] shadow-primary/25'
+            )}
+            size={mockCues.length ? 'default' : 'lg'}
+            variant={mockCues.length ? 'outline' : 'default'}
+          >
+            {isActive || generating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {jobStatus === 'queued' ? 'Queued…' : 'Generating…'}
+              </>
+            ) : mockCues.length ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Regenerate
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-5 w-5" />
+                Generate mock cue
+              </>
+            )}
+          </Button>
+          {!hasIntent && (
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Save your intent (left panel) to unlock generation.
+            </p>
           )}
-          size={mockCues.length ? 'default' : 'lg'}
-          variant={mockCues.length ? 'outline' : 'default'}
-        >
-          {isActive || generating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {jobStatus === 'queued' ? 'Queued…' : 'Generating…'}
-            </>
-          ) : mockCues.length ? (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              Regenerate
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-5 w-5" />
-              Generate mock cue
-            </>
-          )}
-        </Button>
-        {!hasIntent && (
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Save your intent (left panel) to unlock generation.
-          </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Active progress indicator */}
       {(isActive || generating) && (
@@ -201,6 +207,7 @@ export default function GenerationWorkspace({
           onApprove={() => handleApprove(latestUnapproved.id)}
           approving={approving === latestUnapproved.id}
           isLatest
+          showApprove={canApproveCue}
         />
       )}
 
@@ -217,6 +224,7 @@ export default function GenerationWorkspace({
             onApprove={() => handleApprove(approvedCue.id)}
             approving={approving === approvedCue.id}
             isLatest={false}
+            showApprove={canApproveCue}
           />
         </div>
       )}
@@ -229,6 +237,7 @@ export default function GenerationWorkspace({
             cues={older}
             approving={approving}
             onApprove={handleApprove}
+            showApprove={canApproveCue}
           />
         </>
       )}
@@ -243,11 +252,13 @@ function CueRow({
   onApprove,
   approving,
   isLatest,
+  showApprove = true,
 }: {
   cue: MockCue
   onApprove: () => void
   approving: boolean
   isLatest: boolean
+  showApprove?: boolean
 }) {
   return (
     <div className="space-y-3">
@@ -276,7 +287,7 @@ function CueRow({
         >
           Open composer brief (share this URL) →
         </a>
-      ) : (
+      ) : showApprove ? (
         <div className="space-y-2">
           <p className="text-[11px] text-muted-foreground leading-snug">
             Unlocks the public brief page. When email (Resend) is configured, composer and music
@@ -302,7 +313,7 @@ function CueRow({
             )}
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -313,10 +324,12 @@ function VersionHistory({
   cues,
   approving,
   onApprove,
+  showApprove = true,
 }: {
   cues: MockCue[]
   approving: string | null
   onApprove: (id: string) => void
+  showApprove?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -339,6 +352,7 @@ function VersionHistory({
                 onApprove={() => onApprove(cue.id)}
                 approving={approving === cue.id}
                 isLatest={false}
+                showApprove={showApprove}
               />
             </div>
           ))}

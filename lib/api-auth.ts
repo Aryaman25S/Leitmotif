@@ -5,8 +5,15 @@ import {
   getSceneCard,
   getMockCue,
   profileCanAccessProject,
+  getProjectRoleForProfile,
 } from '@/lib/store'
 import type { Profile } from '@/lib/store'
+import {
+  canDirect,
+  canApprove,
+  canAcknowledge,
+  type EffectiveRole,
+} from '@/lib/roles'
 
 export async function requireApiSession(
   req: NextRequest
@@ -49,4 +56,71 @@ export async function assertMockCueAccess(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   return assertSceneAccess(profile, cue.scene_card_id)
+}
+
+// ── Role-based guards ─────────────────────────────────────────────────────────
+
+export async function getProjectRole(
+  profile: Profile,
+  projectId: string
+): Promise<EffectiveRole | null> {
+  return (await getProjectRoleForProfile(profile.id, projectId)) as EffectiveRole | null
+}
+
+async function resolveSceneProjectId(sceneId: string): Promise<string | null> {
+  const scene = await getSceneCard(sceneId)
+  return scene?.project_id ?? null
+}
+
+async function resolveCueProjectId(cueId: string): Promise<string | null> {
+  const cue = await getMockCue(cueId)
+  if (!cue) return null
+  const scene = await getSceneCard(cue.scene_card_id)
+  return scene?.project_id ?? null
+}
+
+export async function assertCanDirectProject(
+  profile: Profile,
+  projectId: string
+): Promise<NextResponse | null> {
+  const role = await getProjectRole(profile, projectId)
+  if (!canDirect(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+export async function assertCanDirectScene(
+  profile: Profile,
+  sceneId: string
+): Promise<NextResponse | null> {
+  const projectId = await resolveSceneProjectId(sceneId)
+  if (!projectId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return assertCanDirectProject(profile, projectId)
+}
+
+export async function assertCanApproveCue(
+  profile: Profile,
+  cueId: string
+): Promise<NextResponse | null> {
+  const projectId = await resolveCueProjectId(cueId)
+  if (!projectId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const role = await getProjectRole(profile, projectId)
+  if (!canApprove(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+export async function assertCanAcknowledgeCue(
+  profile: Profile,
+  cueId: string
+): Promise<NextResponse | null> {
+  const projectId = await resolveCueProjectId(cueId)
+  if (!projectId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const role = await getProjectRole(profile, projectId)
+  if (!canAcknowledge(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
 }

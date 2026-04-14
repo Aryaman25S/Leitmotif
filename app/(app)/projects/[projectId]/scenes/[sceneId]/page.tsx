@@ -8,7 +8,7 @@ import {
   getMockCues,
   getLatestJob,
   getComments,
-  profileCanAccessProject,
+  getProjectRoleForProfile,
 } from '@/lib/store'
 import { notFound, redirect } from 'next/navigation'
 import { getSessionProfile } from '@/lib/session'
@@ -23,6 +23,7 @@ import SceneTabs from '@/components/scene/SceneTabs'
 import DeleteSceneButton from '@/components/scene/DeleteSceneButton'
 import { getFileUrl } from '@/lib/storage'
 import type { Comment } from '@/lib/store'
+import { canDirect, canApprove, type EffectiveRole } from '@/lib/roles'
 
 export default async function ScenePage({
   params,
@@ -34,8 +35,10 @@ export default async function ScenePage({
   const profile = await getSessionProfile()
   if (!profile) redirect('/sign-in')
 
-  const canAccess = await profileCanAccessProject(profile.id, projectId)
-  if (!canAccess) notFound()
+  const viewerRole = (await getProjectRoleForProfile(profile.id, projectId)) as EffectiveRole | null
+  if (!viewerRole) notFound()
+  const viewerCanDirect = canDirect(viewerRole)
+  const viewerCanApprove = canApprove(viewerRole)
 
   const scene = await getSceneCard(sceneId)
   if (!scene || scene.project_id !== projectId) notFound()
@@ -57,9 +60,11 @@ export default async function ScenePage({
           <ArrowLeft className="h-3 w-3" />
           {project?.title}
         </Link>
-        <div className="ml-auto">
-          <DeleteSceneButton sceneId={sceneId} projectId={projectId} />
-        </div>
+        {viewerCanDirect && (
+          <div className="ml-auto">
+            <DeleteSceneButton sceneId={sceneId} projectId={projectId} />
+          </div>
+        )}
       </div>
 
       {/* Hero title with gradient motif */}
@@ -72,6 +77,7 @@ export default async function ScenePage({
           cueNumber={scene.cue_number}
           tcIn={scene.tc_in_smpte}
           tcOut={scene.tc_out_smpte}
+          readOnly={!viewerCanDirect}
         />
       </div>
 
@@ -82,6 +88,7 @@ export default async function ScenePage({
             sceneId={sceneId}
             videoUrl={videoUrl}
             durationSec={scene.video_duration_sec}
+            readOnly={!viewerCanDirect}
           />
 
           <div className="rounded-xl bg-card/50 border border-border p-5">
@@ -95,6 +102,7 @@ export default async function ScenePage({
                   genSettings={genSettings ?? null}
                   toneBrief={project?.tone_brief ?? null}
                   sceneLabel={scene.label}
+                  readOnly={!viewerCanDirect}
                 />
               }
               commentsContent={
@@ -120,6 +128,8 @@ export default async function ScenePage({
             latestJobStatus={(latestJob?.status ?? null) as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null}
             hasIntent={!!(latestIntent?.emotional_atmospheres?.length)}
             latestIntentId={latestIntent?.id ?? null}
+            canGenerate={viewerCanDirect}
+            canApproveCue={viewerCanApprove}
           />
         </div>
       </div>

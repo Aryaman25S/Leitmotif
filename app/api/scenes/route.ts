@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSceneCard } from '@/lib/store'
-import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectProject } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   const user = await requireApiSession(req)
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'project_id and label required' }, { status: 400 })
   }
 
-  const denied = await assertProjectAccess(user, project_id)
+  const denied = await assertCanDirectProject(user, project_id)
   if (denied) return denied
 
   const scene = await createSceneCard({

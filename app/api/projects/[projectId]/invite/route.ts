@@ -10,10 +10,7 @@ import { getProject, createProjectMember, getProjectMembers, uid } from '@/lib/s
 import { requireApiSession, assertProjectAccess } from '@/lib/api-auth'
 import { buildAppUrl } from '@/lib/public-url'
 import { isResendConfigured, sendProjectInviteEmail } from '@/lib/mail/resend'
-
-function formatRoleLabel(role: string): string {
-  return role.replace(/_/g, ' ')
-}
+import { isValidProjectRole, formatRoleLabel } from '@/lib/roles'
 
 export async function POST(
   req: NextRequest,
@@ -26,6 +23,9 @@ export async function POST(
   const { email, role } = await req.json()
   if (!email || !role) {
     return NextResponse.json({ error: 'email and role required' }, { status: 400 })
+  }
+  if (!isValidProjectRole(role)) {
+    return NextResponse.json({ error: `Invalid role: ${role}` }, { status: 400 })
   }
 
   const denied = await assertProjectAccess(user, projectId)

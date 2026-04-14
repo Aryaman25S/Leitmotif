@@ -70,7 +70,7 @@ export default function SignUpForm({ oauthProviders = [] }: Props) {
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Director name"
+            placeholder="Name"
           />
         </div>
         <div className="space-y-2">

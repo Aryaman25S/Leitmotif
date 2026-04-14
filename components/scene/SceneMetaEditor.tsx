@@ -12,6 +12,7 @@ interface SceneMetaEditorProps {
   cueNumber: string | null
   tcIn: string | null
   tcOut: string | null
+  readOnly?: boolean
 }
 
 export default function SceneMetaEditor({
@@ -19,6 +20,7 @@ export default function SceneMetaEditor({
   cueNumber,
   tcIn,
   tcOut,
+  readOnly = false,
 }: SceneMetaEditorProps) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
@@ -72,13 +74,15 @@ export default function SceneMetaEditor({
             {tcIn ?? '—'} → {tcOut ?? '—'}
           </span>
         )}
-        <button
-          onClick={() => setEditing(true)}
-          className="flex items-center gap-1 hover:text-foreground transition-opacity opacity-0 group-hover:opacity-100 ml-auto"
-        >
-          <Pencil className="h-3 w-3" />
-          {cueNumber || tcIn || tcOut ? 'Edit' : 'Add cue info'}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-1 hover:text-foreground transition-opacity opacity-0 group-hover:opacity-100 ml-auto"
+          >
+            <Pencil className="h-3 w-3" />
+            {cueNumber || tcIn || tcOut ? 'Edit' : 'Add cue info'}
+          </button>
+        )}
       </div>
     )
   }

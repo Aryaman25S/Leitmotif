@@ -16,7 +16,7 @@ import {
   getProject,
   getMemberEmailsByRoles,
 } from '@/lib/store'
-import { requireApiSession, assertMockCueAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanApproveCue } from '@/lib/api-auth'
 import { buildAppUrl } from '@/lib/public-url'
 import { isResendConfigured, shouldSendBriefEmails, sendBriefReadyEmail } from '@/lib/mail/resend'
 
@@ -30,7 +30,7 @@ export async function POST(
   const user = await requireApiSession(req)
   if (user instanceof NextResponse) return user
 
-  const denied = await assertMockCueAccess(user, cueId)
+  const denied = await assertCanApproveCue(user, cueId)
   if (denied) return denied
 
   const cue = await getMockCue(cueId)

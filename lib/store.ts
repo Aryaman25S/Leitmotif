@@ -18,7 +18,6 @@ export interface Profile {
   id: string
   name: string | null
   email: string
-  role_default: string | null
   created_at: string
 }
 
@@ -196,6 +195,46 @@ export async function getProjectsForProfile(profileId: string): Promise<Project[
   }))
 }
 
+export interface ProjectWithRole extends Project {
+  viewerRole: string
+}
+
+/** Projects the profile owns or is an accepted member of, with their role on each. */
+export async function getProjectsWithRoleForProfile(profileId: string): Promise<ProjectWithRole[]> {
+  const rows = await prisma.project.findMany({
+    where: {
+      OR: [
+        { owner_id: profileId },
+        {
+          project_members: {
+            some: {
+              user_id: profileId,
+              accepted_at: { not: null },
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      project_members: {
+        where: { user_id: profileId, accepted_at: { not: null } },
+        select: { role_on_project: true },
+        take: 1,
+      },
+    },
+    orderBy: { updated_at: 'desc' },
+  })
+  return rows.map((p) => ({
+    ...p,
+    created_at: isoRequired(p.created_at),
+    updated_at: isoRequired(p.updated_at),
+    tone_brief: p.tone_brief ?? null,
+    viewerRole: p.owner_id === profileId
+      ? 'owner'
+      : p.project_members[0]?.role_on_project ?? 'viewer',
+  }))
+}
+
 export async function profileCanAccessProject(
   profileId: string,
   projectId: string
@@ -218,6 +257,33 @@ export async function profileCanAccessProject(
     select: { id: true },
   })
   return !!row
+}
+
+/**
+ * Returns the effective role a profile holds on a project:
+ * 'owner' if they own it, the `role_on_project` string if they are an accepted
+ * member, or `null` if they have no access.
+ */
+export async function getProjectRoleForProfile(
+  profileId: string,
+  projectId: string
+): Promise<'owner' | string | null> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { owner_id: true },
+  })
+  if (!project) return null
+  if (project.owner_id === profileId) return 'owner'
+
+  const member = await prisma.projectMember.findFirst({
+    where: {
+      project_id: projectId,
+      user_id: profileId,
+      accepted_at: { not: null },
+    },
+    select: { role_on_project: true },
+  })
+  return member?.role_on_project ?? null
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {

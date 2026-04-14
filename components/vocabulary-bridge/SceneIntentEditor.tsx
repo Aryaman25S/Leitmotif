@@ -101,6 +101,7 @@ interface SceneIntentEditorProps {
   genSettings: GenerationSettings | null
   toneBrief: string | null
   sceneLabel: string
+  readOnly?: boolean
 }
 
 export default function SceneIntentEditor({
@@ -110,6 +111,7 @@ export default function SceneIntentEditor({
   genSettings,
   toneBrief,
   sceneLabel,
+  readOnly = false,
 }: SceneIntentEditorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -243,7 +245,7 @@ export default function SceneIntentEditor({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn('space-y-6', readOnly && 'pointer-events-none opacity-80')}>
       {/* ── Emotional core (always open) ─────────────────────────────── */}
 
       {/* Emotional Atmospheres — grouped by energy tier */}
@@ -670,21 +672,25 @@ export default function SceneIntentEditor({
         </div>
       )}
 
-      <Button
-        onClick={handleSave}
-        disabled={saving || isPending || !atmospheres.length}
-        className={cn(
-          'w-full',
-          atmospheres.length > 0 && !saving && !isPending && 'shadow-[0_0_12px_-3px] shadow-primary/25'
-        )}
-      >
-        {saving ? 'Saving intent…' : 'Save intent'}
-      </Button>
+      {!readOnly && (
+        <>
+          <Button
+            onClick={handleSave}
+            disabled={saving || isPending || !atmospheres.length}
+            className={cn(
+              'w-full',
+              atmospheres.length > 0 && !saving && !isPending && 'shadow-[0_0_12px_-3px] shadow-primary/25'
+            )}
+          >
+            {saving ? 'Saving intent…' : 'Save intent'}
+          </Button>
 
-      {initialIntent && (
-        <p className="text-xs text-center text-muted-foreground">
-          Current intent: v{initialIntent.version_number} — saving creates a new version
-        </p>
+          {initialIntent && (
+            <p className="text-xs text-center text-muted-foreground">
+              Current intent: v{initialIntent.version_number} — saving creates a new version
+            </p>
+          )}
+        </>
       )}
     </div>
   )

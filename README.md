@@ -126,6 +126,31 @@ On approval → composer brief URL (/brief/[cueId])
 
 ---
 
+## Roles and permissions
+
+Roles are **per-project**, not global. Anyone can sign up and create projects — whoever creates a project is the **owner**. A user can be a director on one project and a composer on another. Roles are assigned at invite time via project settings.
+
+| Action | Owner | Director | Music Sup. | Composer | Sound Des. | Viewer |
+|--------|:-----:|:--------:|:----------:|:--------:|:----------:|:------:|
+| View project / scenes / intent | Y | Y | Y | Y | Y | Y |
+| Edit project settings | Y | Y | - | - | - | - |
+| Add / delete scenes | Y | Y | - | - | - | - |
+| Edit scene metadata | Y | Y | - | - | - | - |
+| Upload video | Y | Y | - | - | - | - |
+| Edit intent | Y | Y | - | - | - | - |
+| Generate mock cue | Y | Y | - | - | - | - |
+| Approve mock cue | Y | Y | Y | - | - | - |
+| Acknowledge brief | - | - | - | Y | Y | - |
+| Comment | Y | Y | Y | Y | Y | Y |
+| Invite / remove members | Y | - | - | - | - | - |
+| Delete project | Y | - | - | - | - | - |
+
+Permission groups are defined in [`lib/roles.ts`](lib/roles.ts) (`canDirect`, `canApprove`, `canAcknowledge`, `canComment`, `canManage`). API routes enforce these via assertion guards in [`lib/api-auth.ts`](lib/api-auth.ts). The UI adapts based on the viewer's role — non-directors see read-only intent, hidden generate/upload controls, and disabled settings fields. The `/projects` list shows a role badge per project.
+
+The public brief page (`/brief/[cueId]`) remains accessible without auth — the link itself is the access control for external composers.
+
+---
+
 ## Data storage
 
 | What | Where |
@@ -168,13 +193,14 @@ components/
   player/SceneVideoUpload               Video upload
 
 lib/
+  roles.ts                       Per-project role constants + permission helpers
   store.ts                       Prisma data access
   public-url.ts                  Origin for invite/brief links (env + request)
   mail/resend.ts                 Optional Resend invite + brief emails
   auth.ts                        Better Auth server instance
   auth-client.ts                 Better Auth React client
   session.ts                     Session → Profile sync (by email)
-  api-auth.ts                    API route session + project access helpers
+  api-auth.ts                    API route session + project/role access helpers
   storage.ts                     R2 + local disk; read/write helpers
   generation/runGenerationJob.ts Shared Stable Audio → storage → DB pipeline
   videoDuration.ts               Server-side duration via music-metadata (no ffprobe)
@@ -194,7 +220,7 @@ These are **called out in code (TODO)** and matter for a real deployment:
 |------|------------------|--------|
 | **Generation jobs** | **`after()`** when `INNGEST_EVENT_KEY` is unset (risky for long Stable runs on serverless); **Inngest** queue + step retries when set — [`app/api/scenes/[sceneId]/generate/route.ts`](app/api/scenes/[sceneId]/generate/route.ts), [`inngest/functions.ts`](leitmotif/inngest/functions.ts) | **Production:** set `INNGEST_EVENT_KEY` (Inngest-first). Structured logs in [`runGenerationJob`](leitmotif/lib/generation/runGenerationJob.ts); add external metrics/alerting as needed |
 | **File hosting** | **R2** + same-origin `/api/files` streaming; **presigned PUT** to R2 for scene video when R2 env is set; otherwise multipart upload via **`/api/storage/upload/commit`** and local disk in dev | Tune CORS on the R2 bucket for your app origin; optional multipart tuning |
-| **Auth** | Better Auth **email/password** + optional **Google / GitHub OAuth**; Postgres sessions; app [`Profile`](prisma/schema.prisma) synced by email — [`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts) | Optional: org-style features beyond `ProjectMember`, stricter **email verification** if required. **Passwordless magic-link sign-in** is not planned (OAuth + email/password are enough). |
+| **Auth & RBAC** | Better Auth **email/password** + optional **Google / GitHub OAuth**; Postgres sessions; app [`Profile`](prisma/schema.prisma) synced by email — [`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts). **Per-project roles** (owner, director, music_supervisor, composer, sound_designer, viewer) enforced at API + UI level — [`lib/roles.ts`](lib/roles.ts), [`lib/api-auth.ts`](lib/api-auth.ts) | Optional: org-style features beyond `ProjectMember`, stricter **email verification** if required. |
 | **Invites & briefs** | With **Resend** env (`RESEND_API_KEY`, `RESEND_FROM`): invite + brief-ready emails from those routes; always returns shareable URLs in JSON | Tune copy, `RESEND_REPLY_TO`, deliverability, and **`RESEND_BRIEF_EMAILS`** — [`app/api/projects/[projectId]/invite/route.ts`](app/api/projects/[projectId]/invite/route.ts), [`app/api/mock-cues/[cueId]/approve/route.ts`](app/api/mock-cues/[cueId]/approve/route.ts), [`lib/mail/resend.ts`](lib/mail/resend.ts) |
 | **Video duration** | Server re-probes with **music-metadata** when the file is readable; browser value used as fallback | Optional: stricter validation or hosted transcode if a format is unsupported |
 

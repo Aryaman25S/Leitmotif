@@ -20,11 +20,10 @@ enum JobStatus {
 // ── Models ────────────────────────────────────────────────────────────────────
 
 model Profile {
-  id           String   @id @default(uuid())
-  name         String?
-  email        String   @unique
-  role_default String?
-  created_at   DateTime @default(now())
+  id         String   @id @default(uuid())
+  name       String?
+  email      String   @unique
+  created_at DateTime @default(now())
 
   projects            Project[]       @relation("owner")
   project_members     ProjectMember[] @relation("member_profile")

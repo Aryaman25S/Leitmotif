@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveFile } from '@/lib/storage'
 import path from 'path'
-import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { requireApiSession, assertCanDirectScene } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   const profile = await requireApiSession(req)
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (!sceneId) {
       return NextResponse.json({ error: 'Invalid fileKey' }, { status: 400 })
     }
-    const denied = await assertSceneAccess(profile, sceneId)
+    const denied = await assertCanDirectScene(profile, sceneId)
     if (denied) return denied
   }
 

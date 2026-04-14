@@ -39,7 +39,6 @@ async function main() {
       id: MOCK_PROFILE_ID,
       email,
       name,
-      role_default: 'director',
     },
     update: {
       email,
