@@ -14,6 +14,7 @@ import { ArrowLeft, UserPlus, Trash2, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import DeleteConfirmButton from '@/components/ui/delete-confirm-button'
 
 const INSTRUMENTATION_OPTIONS = [
   { key: 'solo_intimate',  label: 'Solo / intimate' },
@@ -52,6 +53,7 @@ export default function ProjectSettingsPage() {
   const [inviting, setInviting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [viewerIsOwner, setViewerIsOwner] = useState(false)
 
   useEffect(() => {
     fetch(`/api/projects/${projectId}`)
@@ -69,9 +71,21 @@ export default function ProjectSettingsPage() {
           setDoNotGenerate(data.settings.do_not_generate ?? '')
         }
         if (data.members) setMembers(data.members)
+        if (typeof data.viewerIsOwner === 'boolean') setViewerIsOwner(data.viewerIsOwner)
         setLoaded(true)
       })
   }, [projectId])
+
+  async function removeMember(memberId: string) {
+    const res = await fetch(`/api/projects/${projectId}/members/${memberId}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(typeof data.error === 'string' ? data.error : 'Failed to remove collaborator')
+      return
+    }
+    setMembers((prev) => prev.filter((m) => m.id !== memberId))
+    toast.success('Collaborator removed')
+  }
 
   function toggleInstrumentation(key: string) {
     setInstrumentation((prev) =>
@@ -251,25 +265,34 @@ export default function ProjectSettingsPage() {
           <CardHeader>
             <CardTitle>Team</CardTitle>
             <CardDescription>
-              Invite collaborators by email. No invite email is sent yet — after adding someone,
-              copy the magic link from the confirmation and send it yourself, or open it locally to
-              accept the invite.
+              {viewerIsOwner
+                ? 'Invite collaborators by email. When transactional email (Resend) is configured, an invite is sent automatically; otherwise copy the invite link from the confirmation and share it so they can sign in and accept. You can remove collaborators below.'
+                : 'Collaborators on this project. Only the project owner can invite or remove people.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {members.length > 0 && (
               <div className="space-y-2">
                 {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-sm py-1">
-                    <span className="text-muted-foreground">
+                  <div key={m.id} className="flex items-center justify-between gap-2 text-sm py-1">
+                    <span className="text-muted-foreground min-w-0 truncate">
                       {m.profile?.name ?? m.profile?.email ?? m.invite_email ?? '—'}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="secondary" className="text-xs capitalize">
                         {m.role_on_project.replace(/_/g, ' ')}
                       </Badge>
                       {!m.accepted_at && (
                         <span className="text-xs text-muted-foreground">Pending</span>
+                      )}
+                      {viewerIsOwner && (
+                        <DeleteConfirmButton
+                          size="sm"
+                          label="Remove"
+                          confirmLabel="Remove?"
+                          className="h-7 px-2"
+                          onDelete={() => removeMember(m.id)}
+                        />
                       )}
                     </div>
                   </div>
@@ -277,29 +300,31 @@ export default function ProjectSettingsPage() {
                 <Separator />
               </div>
             )}
-            <form onSubmit={handleInvite} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="invite-email">Invite by email</Label>
-                <Input id="invite-email" type="email" placeholder="collaborator@studio.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="invite-role">Their role</Label>
-                <Select value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
-                  <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="composer">Composer</SelectItem>
-                    <SelectItem value="music_supervisor">Music Supervisor</SelectItem>
-                    <SelectItem value="director">Director</SelectItem>
-                    <SelectItem value="sound_designer">Sound Designer</SelectItem>
-                    <SelectItem value="viewer">Viewer (read-only)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" disabled={inviting || !inviteEmail.trim()} size="sm" className="gap-1.5">
-                <UserPlus className="h-3.5 w-3.5" />
-                {inviting ? 'Adding…' : 'Add collaborator'}
-              </Button>
-            </form>
+            {viewerIsOwner ? (
+              <form onSubmit={handleInvite} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Invite by email</Label>
+                  <Input id="invite-email" type="email" placeholder="collaborator@studio.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-role">Their role</Label>
+                  <Select value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
+                    <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="composer">Composer</SelectItem>
+                      <SelectItem value="music_supervisor">Music Supervisor</SelectItem>
+                      <SelectItem value="director">Director</SelectItem>
+                      <SelectItem value="sound_designer">Sound Designer</SelectItem>
+                      <SelectItem value="viewer">Viewer (read-only)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" disabled={inviting || !inviteEmail.trim()} size="sm" className="gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  {inviting ? 'Adding…' : 'Add collaborator'}
+                </Button>
+              </form>
+            ) : null}
           </CardContent>
         </Card>
 

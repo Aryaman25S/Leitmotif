@@ -346,6 +346,14 @@ export async function getMemberEmailsByRoles(
   return [...emails]
 }
 
+/** Remove a collaborator row. Returns true if a row was deleted. */
+export async function deleteProjectMember(memberId: string, projectId: string): Promise<boolean> {
+  const result = await prisma.projectMember.deleteMany({
+    where: { id: memberId, project_id: projectId },
+  })
+  return result.count > 0
+}
+
 export async function createProjectMember(
   data: Omit<ProjectMember, 'id' | 'invited_at' | 'profile'>
 ): Promise<ProjectMember> {
