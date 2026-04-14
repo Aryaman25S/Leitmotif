@@ -19,7 +19,12 @@ export async function GET(
   const settings = await getGenerationSettings(projectId)
   const members = await getProjectMembers(projectId)
 
-  return NextResponse.json({ project, settings, members })
+  return NextResponse.json({
+    project,
+    settings,
+    members,
+    viewerIsOwner: project.owner_id === profile.id,
+  })
 }
 
 export async function PATCH(

@@ -279,7 +279,9 @@ function CueRow({
       ) : (
         <div className="space-y-2">
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Unlocks the public brief page; email to the composer is not sent from Leitmotif yet.
+            Unlocks the public brief page. When email (Resend) is configured, composer and music
+            supervisor collaborators may get a brief-ready message; you can always share the link
+            below.
           </p>
           <Button
             onClick={onApprove}
