@@ -32,6 +32,7 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
   } = payload
 
   await updateJob(jobId, { status: 'processing', started_at: now() })
+  console.info('[leitmotif:generate] start', { jobId, sceneId, intentVersionId, durationSec })
 
   try {
     const { buffer: audioBuffer, source: audioSource } = await generateWithStableAudio(
@@ -65,10 +66,11 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
 
     await updateJob(jobId, { status: 'completed', completed_at: now() })
     await updateSceneCard(sceneId, { status: 'awaiting_approval' })
+    console.info('[leitmotif:generate] completed', { jobId, sceneId })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Generation failed'
     await updateJob(jobId, { status: 'failed', error_message: message })
     await updateSceneCard(sceneId, { status: 'tagged' })
-    console.error('[generate] Failed:', message)
+    console.error('[leitmotif:generate] failed', { jobId, sceneId, message })
   }
 }

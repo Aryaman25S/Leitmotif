@@ -1,8 +1,9 @@
 /**
  * POST /api/storage/upload/commit
  *
- * Receives a file upload as multipart/form-data and saves it to R2 (or local disk in dev).
- * The client sends: { file: File, fileKey: string }
+ * Multipart upload through Next.js — used when R2 is **not** configured (local disk),
+ * or when using the multipart path for scene video. When R2 is on, prefer presigned PUT
+ * from `POST /api/storage/upload` (`uploadMode: "presigned"`).
  */
 
 import { NextRequest, NextResponse } from 'next/server'

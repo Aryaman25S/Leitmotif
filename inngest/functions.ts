@@ -6,6 +6,8 @@ export const processGeneration = inngest.createFunction(
     id: 'process-stable-audio-generation',
     name: 'Stable Audio mock cue',
     triggers: [{ event: 'leitmotif/generation.requested' }],
+    /** Retry transient Stable / network failures (Inngest step-level). */
+    retries: 3,
   },
   async ({ event, step }) => {
     const data = event.data as GenerationJobPayload

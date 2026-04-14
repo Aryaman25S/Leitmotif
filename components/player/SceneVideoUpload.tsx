@@ -52,18 +52,39 @@ export default function SceneVideoUpload({
       return
     }
 
-    const { uploadUrl, fileKey } = await initRes.json()
+    const init = await initRes.json()
+    const { fileKey, uploadMode, putUrl, uploadUrl } = init as {
+      fileKey: string
+      uploadMode?: string
+      putUrl?: string
+      uploadUrl?: string
+    }
     setProgress(30)
 
-    // Step 2: Upload the file
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('fileKey', fileKey)
-
-    const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData })
-
-    if (!uploadRes.ok) {
-      toast.error('Upload failed')
+    // Step 2: Upload — direct to R2 (presigned) or through our API (multipart / local disk)
+    if (uploadMode === 'presigned' && putUrl) {
+      const uploadRes = await fetch(putUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      })
+      if (!uploadRes.ok) {
+        toast.error('Upload failed (check R2 CORS allows PUT from this origin)')
+        setUploading(false)
+        return
+      }
+    } else if (uploadUrl) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('fileKey', fileKey)
+      const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData })
+      if (!uploadRes.ok) {
+        toast.error('Upload failed')
+        setUploading(false)
+        return
+      }
+    } else {
+      toast.error('Invalid upload response')
       setUploading(false)
       return
     }

@@ -1,21 +1,18 @@
 /**
  * POST /api/storage/upload
  *
- * Returns an upload target URL and key.
- * Previously generated Supabase Storage pre-signed URLs.
- * Now returns a local multipart-upload endpoint.
+ * Returns upload instructions for a scene video (or mock-cue path for future use).
+ * When R2 is configured: **presigned PUT** URL — client uploads directly to R2.
+ * Otherwise: multipart POST to `/api/storage/upload/commit` (local disk in dev).
  *
- * The client POSTs the file as multipart/form-data to /api/storage/upload/commit
- * along with the returned uploadToken.
- *
- * TODO: In production, replace with pre-signed S3/R2 URLs and update the client
- *       (SceneVideoUpload.tsx) to PUT directly to S3.
+ * For presigned uploads, configure **CORS** on the R2 bucket to allow PUT from your app origin.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { uid } from '@/lib/store'
 import path from 'path'
 import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { getPresignedPutUrl, isR2StorageEnabled } from '@/lib/storage'
 
 export async function POST(req: NextRequest) {
   const profile = await requireApiSession(req)
@@ -35,13 +32,27 @@ export async function POST(req: NextRequest) {
   const storedName = `${sceneId}_${uid()}${ext}`
   const fileKey = `${bucket}/${storedName}`
 
-  // The "upload URL" is our own multipart upload endpoint
+  if (isR2StorageEnabled()) {
+    const putUrl = await getPresignedPutUrl(fileKey, contentType)
+    if (!putUrl) {
+      return NextResponse.json({ error: 'Could not create upload URL' }, { status: 500 })
+    }
+    return NextResponse.json({
+      uploadMode: 'presigned',
+      putUrl,
+      fileKey,
+      signedUrl: `/api/files/${fileKey}`,
+      storedName,
+      bucket,
+    })
+  }
+
   const uploadUrl = `/api/storage/upload/commit`
 
   return NextResponse.json({
+    uploadMode: 'multipart',
     uploadUrl,
     fileKey,
-    // fileKey is also used as the "signedUrl" for immediate playback via /api/files/...
     signedUrl: `/api/files/${fileKey}`,
     storedName,
     bucket,
