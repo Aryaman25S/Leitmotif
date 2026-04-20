@@ -3,8 +3,8 @@ import { runGenerationJob, type GenerationJobPayload } from '@/lib/generation/ru
 
 export const processGeneration = inngest.createFunction(
   {
-    id: 'process-stable-audio-generation',
-    name: 'Stable Audio mock cue',
+    id: 'process-generation',
+    name: 'Generate mock cue',
     triggers: [{ event: 'leitmotif/generation.requested' }],
     /** Retry transient Stable / network failures (Inngest step-level). */
     retries: 3,

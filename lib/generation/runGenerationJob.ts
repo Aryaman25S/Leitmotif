@@ -7,6 +7,7 @@ import {
   now,
 } from '@/lib/store'
 import { generateWithStableAudio } from '@/lib/generation/stableAudio'
+import { generateWithLyria } from '@/lib/generation/lyria'
 import { saveFile } from '@/lib/storage'
 
 export interface GenerationJobPayload {
@@ -17,9 +18,11 @@ export interface GenerationJobPayload {
   durationSec: number
   sceneLabel: string
   intentVersionId: string
+  modelProvider?: string
+  /** Single combined prompt for Lyria (includes exclusions). */
+  lyriaPrompt?: string
 }
 
-/** Runs Stable Audio (or silent mock), writes audio to storage, updates DB. */
 export async function runGenerationJob(payload: GenerationJobPayload): Promise<void> {
   const {
     jobId,
@@ -29,23 +32,38 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
     durationSec,
     sceneLabel,
     intentVersionId,
+    modelProvider = 'stable_audio',
+    lyriaPrompt,
   } = payload
 
   await updateJob(jobId, { status: 'processing', started_at: now() })
-  console.info('[leitmotif:generate] start', { jobId, sceneId, intentVersionId, durationSec })
+  console.info('[leitmotif:generate] start', { jobId, sceneId, intentVersionId, durationSec, modelProvider })
 
   try {
-    const { buffer: audioBuffer, source: audioSource } = await generateWithStableAudio(
-      positivePrompt,
-      negativePrompt,
-      durationSec
-    )
+    let audioBuffer: Buffer
+    let isMock = false
+
+    if (modelProvider === 'lyria' && lyriaPrompt) {
+      const result = await generateWithLyria(lyriaPrompt, durationSec)
+      audioBuffer = result.buffer
+      isMock = result.source === 'silent_mock'
+    } else {
+      const result = await generateWithStableAudio(positivePrompt, negativePrompt, durationSec)
+      audioBuffer = result.buffer
+      isMock = result.source === 'silent_mock'
+    }
 
     const existingCues = await getMockCues(sceneId)
     const versionNumber = existingCues.length + 1
     const safeLabel = sceneLabel.replace(/[^a-zA-Z0-9_\-]/g, '_')
-    const fileName = `${safeLabel}_mock_v${versionNumber}_REFERENCE_ONLY.wav`
-    const fileKey = await saveFile('mock-cues', `${sceneId}_${uid()}.wav`, audioBuffer)
+
+    const isWav = audioBuffer.length >= 12 &&
+      audioBuffer.toString('ascii', 0, 4) === 'RIFF' &&
+      audioBuffer.toString('ascii', 8, 12) === 'WAVE'
+    const ext = isWav ? 'wav' : 'mp3'
+
+    const fileName = `${safeLabel}_mock_v${versionNumber}_REFERENCE_ONLY.${ext}`
+    const fileKey = await saveFile('mock-cues', `${sceneId}_${uid()}.${ext}`, audioBuffer)
 
     await createMockCue({
       generation_job_id: jobId,
@@ -55,7 +73,7 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
       file_key: fileKey,
       file_name: fileName,
       duration_sec: durationSec,
-      is_mock: audioSource === 'silent_mock',
+      is_mock: isMock,
       is_approved: false,
       approved_by: null,
       approved_at: null,
@@ -66,7 +84,7 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
 
     await updateJob(jobId, { status: 'completed', completed_at: now() })
     await updateSceneCard(sceneId, { status: 'awaiting_approval' })
-    console.info('[leitmotif:generate] completed', { jobId, sceneId })
+    console.info('[leitmotif:generate] completed', { jobId, sceneId, modelProvider })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Generation failed'
     await updateJob(jobId, { status: 'failed', error_message: message })

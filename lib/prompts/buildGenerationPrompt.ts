@@ -1,11 +1,19 @@
 /**
- * Prompt builder for Stable Audio 2.5
+ * Prompt builders for generation providers.
  *
- * Follows the model's optimal prompt order:
+ * buildGenerationPrompt()  — Stable Audio 2.5 (positive + negative prompt pair)
+ * buildLyriaPrompt()       — Lyria 3 via Gemini API (single combined prompt;
+ *                            exclusions folded into natural language)
+ *
+ * Both consume the same IntentInput + GlobalSettings.
+ *
+ * Stable Audio prompt order:
  *   Format → Genre → Instruments → Mood → Style → BPM → Use-case → Title
+ * Lyria prompt framework:
+ *   Genre & style → Mood → Instrumentation → Tempo → Duration → Exclusions
  *
  * See: https://stability.ai/learning-hub/stable-audio-25-prompt-guide
- *      https://stableaudio.com/user-guide/prompt-structure
+ *      https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-lyria-3-pro
  */
 
 import {
@@ -227,6 +235,122 @@ export function buildGenerationPrompt(
   const negativePrompt = [...new Set(negativeTerms)].join(', ')
 
   return { positivePrompt, negativePrompt }
+}
+
+// ── Lyria 3 prompt (single combined prompt) ───────────────────────────────────
+
+/**
+ * Build a single text prompt for Lyria 3.
+ *
+ * Lyria does not accept a separate negative_prompt via the Gemini API, so
+ * exclusions are folded into the prompt as natural language.  The prompt
+ * follows Google's recommended framework:
+ *   Genre & style → Mood → Instrumentation → Tempo → Structural hints → Exclusions
+ */
+export function buildLyriaPrompt(
+  intent: IntentInput,
+  global: GlobalSettings,
+  durationSec: number,
+): string {
+  const sections: string[] = []
+
+  // Genre & style
+  const styleParts: string[] = ['Cinematic film score underscore']
+  const eraPhrase = global.eraReference?.trim()
+  if (eraPhrase) styleParts.push(eraPhrase)
+  const recQuality = intent.recordingQuality
+    ? RECORDING_QUALITY_PHRASES[intent.recordingQuality] ?? null
+    : null
+  if (recQuality) styleParts.push(recQuality)
+  else styleParts.push('studio-quality, stereo')
+
+  const diegeticMod = intent.diegeticStatus
+    ? DIEGETIC_PRODUCTION[intent.diegeticStatus]
+    : null
+  if (diegeticMod?.positive) styleParts.push(diegeticMod.positive)
+
+  sections.push(styleParts.join(', ') + '.')
+
+  // Mood
+  const moodTerms: string[] = []
+  const atmospherePhrases = intent.emotionalAtmospheres
+    .map((a) => ATMOSPHERE_DESCRIPTORS[a]?.positivePhrase)
+    .filter(Boolean) as string[]
+  if (atmospherePhrases.length > 0) moodTerms.push(...atmospherePhrases)
+
+  if (intent.density) {
+    const dp = DENSITY_PHRASES[intent.density]
+    if (dp) moodTerms.push(dp)
+  }
+  if (intent.narrativeFunction) {
+    const fn = FUNCTION_DESCRIPTORS[intent.narrativeFunction]
+    if (fn?.modelPhrase) moodTerms.push(fn.modelPhrase)
+  }
+  if (intent.handoffSetting) {
+    const hp = HANDOFF_MODEL_PHRASES[intent.handoffSetting]
+    if (hp) moodTerms.push(hp)
+  }
+  if (moodTerms.length > 0) {
+    sections.push('Mood: ' + moodTerms.join(', ') + '.')
+  }
+
+  // Instrumentation
+  const featuredInst = intent.featuredInstruments?.trim()
+  if (featuredInst) {
+    sections.push('Instruments: ' + featuredInst + '.')
+  } else {
+    const familyPhrase = global.instrumentationFamilies.length > 0
+      ? global.instrumentationFamilies.map((f) => INSTRUMENTATION_PHRASES[f] ?? f).join(', ')
+      : null
+    const budgetPhrase = BUDGET_PHRASES[global.budgetReality ?? ''] ?? null
+    const instParts = [familyPhrase, budgetPhrase].filter(Boolean)
+    if (instParts.length > 0) {
+      sections.push('Instruments: ' + instParts.join(', ') + '.')
+    }
+  }
+
+  // Tempo
+  const bpmStr = deriveBpm(intent.emotionalAtmospheres, intent.targetBpm)
+  if (bpmStr) sections.push(bpmStr + '.')
+
+  // Key
+  if (intent.keySignature) sections.push(`Key of ${intent.keySignature}.`)
+
+  // Duration hint
+  sections.push(`Approximately ${Math.round(durationSec)} seconds.`)
+
+  // Director's words
+  if (intent.directorWords?.trim()) sections.push(intent.directorWords.trim())
+
+  // Use-case context
+  if (intent.narrativeFunction) {
+    const fn = FUNCTION_DESCRIPTORS[intent.narrativeFunction]
+    if (fn?.useCasePhrase) sections.push(fn.useCasePhrase + '.')
+  }
+  if (global.toneBrief?.trim()) sections.push(global.toneBrief.trim())
+
+  // Title
+  if (intent.workingTitle?.trim()) {
+    sections.push(`Titled "${intent.workingTitle.trim()}".`)
+  }
+
+  // Exclusions — folded as natural language
+  const negativeTerms: string[] = []
+
+  for (const a of intent.emotionalAtmospheres) {
+    const desc = ATMOSPHERE_DESCRIPTORS[a]
+    if (desc?.doNotUse) negativeTerms.push(...desc.doNotUse)
+  }
+  if (diegeticMod?.negative) negativeTerms.push(diegeticMod.negative)
+  if (global.doNotGenerate?.trim()) negativeTerms.push(global.doNotGenerate.trim())
+  if (intent.whatWouldBeWrong?.trim()) negativeTerms.push(intent.whatWouldBeWrong.trim())
+  negativeTerms.push('vocals', 'lyrics', 'pop production', 'radio mix', 'advertising jingle')
+
+  const uniqueNegatives = [...new Set(negativeTerms)]
+  sections.push('Instrumental only, no vocals, no lyrics.')
+  sections.push('Avoid: ' + uniqueNegatives.join(', ') + '.')
+
+  return sections.join(' ').replace(/\s+/g, ' ').trim()
 }
 
 // ── Human-readable spec (for director + composer brief) ───────────────────────

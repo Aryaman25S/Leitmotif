@@ -6,20 +6,26 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 import MockCuePlayer from './MockCuePlayer'
-import type { MockCue } from '@/lib/store'
+import type { MockCue as BaseMockCue } from '@/lib/store'
 import { toast } from 'sonner'
 import { Loader2, RefreshCw, CheckCircle2, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
 
+export interface MockCueWithProvider extends BaseMockCue {
+  model_provider?: string | null
+}
+
 interface GenerationWorkspaceProps {
   sceneId: string
-  mockCues: MockCue[]
+  mockCues: MockCueWithProvider[]
   latestJobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   hasIntent: boolean
   latestIntentId: string | null
   canGenerate?: boolean
   canApproveCue?: boolean
+  defaultModelProvider?: string
 }
 
 const STATUS_LABELS = {
@@ -38,12 +44,14 @@ export default function GenerationWorkspace({
   latestIntentId,
   canGenerate = true,
   canApproveCue = true,
+  defaultModelProvider = 'stable_audio',
 }: GenerationWorkspaceProps) {
   const router = useRouter()
-  const [mockCues, setMockCues] = useState<MockCue[]>(initialCues)
+  const [mockCues, setMockCues] = useState<MockCueWithProvider[]>(initialCues)
   const [jobStatus, setJobStatus] = useState(initialJobStatus)
   const [generating, setGenerating] = useState(false)
   const [approving, setApproving] = useState<string | null>(null)
+  const [modelProvider, setModelProvider] = useState(defaultModelProvider)
 
   const isActive = jobStatus === 'queued' || jobStatus === 'processing'
 
@@ -82,7 +90,7 @@ export default function GenerationWorkspace({
     const res = await fetch(`/api/scenes/${sceneId}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intentVersionId: latestIntentId }),
+      body: JSON.stringify({ intentVersionId: latestIntentId, modelProvider }),
     })
 
     const data = await res.json()
@@ -154,7 +162,20 @@ export default function GenerationWorkspace({
 
       {/* Generate / regenerate */}
       {canGenerate && (
-        <div>
+        <div className="space-y-2">
+          <Select
+            value={modelProvider}
+            onValueChange={(v) => v && setModelProvider(v)}
+            disabled={isActive || generating}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="stable_audio">Stable Audio 2.5</SelectItem>
+              <SelectItem value="lyria">Lyria 3 (Google)</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             onClick={handleGenerate}
             disabled={!hasIntent || isActive || generating}
@@ -194,9 +215,9 @@ export default function GenerationWorkspace({
       {(isActive || generating) && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-          {process.env.NEXT_PUBLIC_HAS_STABILITY_KEY
-            ? 'Calling Stable Audio 2.5 API…'
-            : 'Generating mock cue (demo mode)…'}
+          {modelProvider === 'lyria'
+            ? 'Calling Lyria 3 (Google) API…'
+            : 'Calling Stable Audio 2.5 API…'}
         </div>
       )}
 
@@ -247,6 +268,11 @@ export default function GenerationWorkspace({
 
 // ── Shared cue row ────────────────────────────────────────────────────────────
 
+const PROVIDER_BADGE: Record<string, string> = {
+  stable_audio: 'SA',
+  lyria: 'Lyria',
+}
+
 function CueRow({
   cue,
   onApprove,
@@ -254,7 +280,7 @@ function CueRow({
   isLatest,
   showApprove = true,
 }: {
-  cue: MockCue
+  cue: MockCueWithProvider
   onApprove: () => void
   approving: boolean
   isLatest: boolean
@@ -267,6 +293,11 @@ function CueRow({
           v{cue.version_number} — {formatDistanceToNow(new Date(cue.created_at))} ago
         </span>
         <div className="flex items-center gap-1.5">
+          {cue.model_provider && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
+              {PROVIDER_BADGE[cue.model_provider] ?? cue.model_provider}
+            </Badge>
+          )}
           {cue.is_approved && (
             <Badge variant="secondary" className="text-xs">Approved</Badge>
           )}
@@ -326,7 +357,7 @@ function VersionHistory({
   onApprove,
   showApprove = true,
 }: {
-  cues: MockCue[]
+  cues: MockCueWithProvider[]
   approving: string | null
   onApprove: (id: string) => void
   showApprove?: boolean
@@ -364,7 +395,7 @@ function VersionHistory({
 
 // ── Audio player (fetches signed URL) ────────────────────────────────────────
 
-function AudioCuePlayer({ cue }: { cue: MockCue }) {
+function AudioCuePlayer({ cue }: { cue: MockCueWithProvider }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 

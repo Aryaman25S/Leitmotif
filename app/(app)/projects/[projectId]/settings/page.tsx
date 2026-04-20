@@ -47,6 +47,7 @@ export default function ProjectSettingsPage() {
   const [eraReference, setEraReference] = useState('')
   const [budgetReality, setBudgetReality] = useState('hybrid')
   const [doNotGenerate, setDoNotGenerate] = useState('')
+  const [modelProvider, setModelProvider] = useState('stable_audio')
   const [members, setMembers] = useState<Member[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('composer')
@@ -70,6 +71,7 @@ export default function ProjectSettingsPage() {
           setEraReference(data.settings.era_reference ?? '')
           setBudgetReality(data.settings.budget_reality ?? 'hybrid')
           setDoNotGenerate(data.settings.do_not_generate ?? '')
+          setModelProvider(data.settings.model_provider ?? 'stable_audio')
         }
         if (data.members) setMembers(data.members)
         if (typeof data.viewerIsOwner === 'boolean') setViewerIsOwner(data.viewerIsOwner)
@@ -110,6 +112,7 @@ export default function ProjectSettingsPage() {
           era_reference: eraReference.trim() || null,
           budget_reality: budgetReality,
           do_not_generate: doNotGenerate.trim() || null,
+          model_provider: modelProvider,
         },
       }),
     })
@@ -264,6 +267,22 @@ export default function ProjectSettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="do-not">Do not generate (project-wide)</Label>
                 <Textarea id="do-not" placeholder="e.g. No ethnic clichés. No sad violins." value={doNotGenerate} onChange={(e) => setDoNotGenerate(e.target.value)} rows={2} className="resize-none text-sm" />
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="model-provider">Generation provider</Label>
+                <Select value={modelProvider} onValueChange={(v) => v && setModelProvider(v)} disabled={!viewerCanDirect}>
+                  <SelectTrigger id="model-provider"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stable_audio">Stable Audio 2.5</SelectItem>
+                    <SelectItem value="lyria">Lyria 3 (Google)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {modelProvider === 'lyria'
+                    ? 'Lyria 3 via Gemini API. Requires GEMINI_API_KEY. Cheaper per generation; no dedicated negative prompt.'
+                    : 'Stable Audio 2.5 via Stability AI. Requires STABILITY_API_KEY. Exact duration control and native negative prompt.'}
+                </p>
               </div>
             </fieldset>
           </CardContent>

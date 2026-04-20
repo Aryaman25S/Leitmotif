@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLatestJob, getMockCues } from '@/lib/store'
 import { requireApiSession, assertSceneAccess } from '@/lib/api-auth'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   req: NextRequest,
@@ -16,8 +17,22 @@ export async function GET(
   const latestJob = await getLatestJob(sceneId)
   const mockCues = await getMockCues(sceneId)
 
+  const jobIds = [...new Set(mockCues.map((c) => c.generation_job_id))]
+  const jobs = jobIds.length
+    ? await prisma.generationJob.findMany({
+        where: { id: { in: jobIds } },
+        select: { id: true, model_provider: true },
+      })
+    : []
+  const providerByJob = Object.fromEntries(jobs.map((j) => [j.id, j.model_provider]))
+
+  const cuesWithProvider = mockCues.map((c) => ({
+    ...c,
+    model_provider: providerByJob[c.generation_job_id] ?? null,
+  }))
+
   return NextResponse.json({
     jobStatus: latestJob?.status ?? null,
-    mockCues,
+    mockCues: cuesWithProvider,
   })
 }

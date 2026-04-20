@@ -14,7 +14,7 @@ A director uploads a scene clip, tags emotional intent using a controlled vocabu
 | Styling | Tailwind CSS v4 + shadcn/ui v4 |
 | Data store | **PostgreSQL** via **Prisma** ([`prisma/schema.prisma`](prisma/schema.prisma), [`lib/store.ts`](lib/store.ts)) |
 | File storage | **Cloudflare R2** (S3 API) when `R2_*` env vars are set; otherwise **local disk** `.data/uploads/` and `/api/files/` ([`lib/storage.ts`](lib/storage.ts)) |
-| AI music generation | Stability AI — Stable Audio 2.5 (optional; silent WAV mock if no key) |
+| AI music generation | **Stable Audio 2.5** (Stability AI) or **Lyria 3** (Google Gemini API) — selectable per project; silent WAV mock when no API key is set |
 | Auth | **[Better Auth](https://www.better-auth.com)** — email/password and optional **Google / GitHub OAuth** ([`lib/auth.ts`](lib/auth.ts), [`lib/oauth-providers.ts`](lib/oauth-providers.ts)); sessions + users in Postgres ([`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts)); app [`Profile`](prisma/schema.prisma) synced by email on sign-in ([`lib/session.ts`](lib/session.ts)) |
 
 ---
@@ -67,7 +67,8 @@ Alternatively reassign `owner_id` in the database to your other account’s prof
 
 ### 4. Environment (optional)
 
-- **`STABILITY_API_KEY`** — real Stable Audio mock cues. Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY` and the UI shows “Calling Stable Audio…”.
+- **`STABILITY_API_KEY`** — Stable Audio 2.5 mock cues (default provider). Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY`.
+- **`GEMINI_API_KEY`** — Lyria 3 mock cues via Google Gemini API. Get a key at [AI Studio](https://aistudio.google.com/apikey). Select **Lyria 3 (Google)** in project generation settings to use this provider.
 - **`NEXT_PUBLIC_APP_URL`** — base URL for invite and brief links in emails and JSON (e.g. `http://localhost:3000`). On Vercel, `VERCEL_URL` is used when this and `BETTER_AUTH_URL` are unset.
 - **`RESEND_API_KEY`** / **`RESEND_FROM`** — when both are set, [Resend](https://resend.com) sends **project invite** emails and **brief-ready** emails to composer / music-supervisor members (see [`.env.example`](.env.example)). Set **`RESEND_BRIEF_EMAILS=false`** to turn off brief emails only.
 - **`R2_*`** — Cloudflare R2 for uploads in production (see [`.env.example`](.env.example)).
@@ -202,12 +203,13 @@ lib/
   session.ts                     Session → Profile sync (by email)
   api-auth.ts                    API route session + project/role access helpers
   storage.ts                     R2 + local disk; read/write helpers
-  generation/runGenerationJob.ts Shared Stable Audio → storage → DB pipeline
+  generation/runGenerationJob.ts Shared generation → storage → DB pipeline (routes to provider)
+  generation/stableAudio.ts      Stable Audio 2.5 API client + silent fallback
+  generation/lyria.ts            Lyria 3 (Gemini API) client + silent fallback
   videoDuration.ts               Server-side duration via music-metadata (no ffprobe)
   prompts/taxonomy.ts            Controlled vocabulary
-  prompts/buildGenerationPrompt.ts    Intent → prompts + musical spec
+  prompts/buildGenerationPrompt.ts    Intent → prompts + musical spec (Stable Audio + Lyria)
   prompts/intentDisplay.ts       Human labels for brief / UI
-  generation/stableAudio.ts      Stable Audio 2.5 + silent fallback
 ```
 
 ---

@@ -23,6 +23,7 @@ import SceneTabs from '@/components/scene/SceneTabs'
 import DeleteSceneButton from '@/components/scene/DeleteSceneButton'
 import { getFileUrl } from '@/lib/storage'
 import type { Comment } from '@/lib/store'
+import { prisma } from '@/lib/prisma'
 import { canDirect, canApprove, type EffectiveRole } from '@/lib/roles'
 
 export default async function ScenePage({
@@ -46,8 +47,21 @@ export default async function ScenePage({
   const project = await getProject(projectId)
   const latestIntent = await getLatestIntent(sceneId)
   const genSettings = await getGenerationSettings(projectId)
-  const mockCues = await getMockCues(sceneId)
+  const rawMockCues = await getMockCues(sceneId)
   const latestJob = await getLatestJob(sceneId)
+
+  const jobIds = [...new Set(rawMockCues.map((c) => c.generation_job_id))]
+  const jobs = jobIds.length
+    ? await prisma.generationJob.findMany({
+        where: { id: { in: jobIds } },
+        select: { id: true, model_provider: true },
+      })
+    : []
+  const providerByJob = Object.fromEntries(jobs.map((j) => [j.id, j.model_provider]))
+  const mockCues = rawMockCues.map((c) => ({
+    ...c,
+    model_provider: providerByJob[c.generation_job_id] ?? null,
+  }))
   const comments = await getComments(sceneId) as (Comment & { author?: { name: string | null; email: string } | null })[]
 
   const videoUrl = scene.video_file_key ? getFileUrl(scene.video_file_key) : null
@@ -130,6 +144,7 @@ export default async function ScenePage({
             latestIntentId={latestIntent?.id ?? null}
             canGenerate={viewerCanDirect}
             canApproveCue={viewerCanApprove}
+            defaultModelProvider={genSettings?.model_provider ?? 'stable_audio'}
           />
         </div>
       </div>
