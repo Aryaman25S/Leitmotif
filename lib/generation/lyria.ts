@@ -40,7 +40,6 @@ export async function generateWithLyria(
   }
 
   const model = selectModel(durationSec)
-  const usePro = model === 'lyria-3-pro-preview'
 
   console.info('[leitmotif:lyria] calling', { model, durationSec })
 
@@ -49,10 +48,6 @@ export async function generateWithLyria(
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
-    config: {
-      responseModalities: ['AUDIO', 'TEXT'],
-      ...(usePro ? { responseMimeType: 'audio/wav' } : {}),
-    },
   })
 
   const candidates = response.candidates

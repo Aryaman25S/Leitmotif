@@ -124,6 +124,7 @@ export default function LandingPage() {
                 style={{
                   height: `${bar.height * 100}%`,
                   opacity: bar.opacity,
+                  transform: 'scaleY(0.3)',
                   animation: prefersReduced
                     ? 'none'
                     : `bar-pulse 2.8s ease-in-out ${bar.delay}s infinite`,
