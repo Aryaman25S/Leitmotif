@@ -48,3 +48,7 @@ next-env.d.ts
 
 # Stable Audio smoke test output
 scripts/out-test-stable-audio.wav
+
+# AI agent config
+AGENTS.md
+CLAUDE.md
