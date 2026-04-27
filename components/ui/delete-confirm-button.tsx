@@ -10,6 +10,7 @@ interface DeleteConfirmButtonProps {
   confirmLabel?: string
   className?: string
   size?: 'sm' | 'default'
+  disabled?: boolean
 }
 
 /**
@@ -22,6 +23,7 @@ export default function DeleteConfirmButton({
   confirmLabel = 'Confirm delete',
   className,
   size = 'sm',
+  disabled = false,
 }: DeleteConfirmButtonProps) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -44,7 +46,7 @@ export default function DeleteConfirmButton({
       variant={confirming ? 'destructive' : 'ghost'}
       size={size}
       onClick={handleClick}
-      disabled={deleting}
+      disabled={deleting || disabled}
       className={className}
       onBlur={() => setTimeout(() => setConfirming(false), 200)}
     >

@@ -54,7 +54,8 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
     }
 
     const existingCues = await getMockCues(sceneId)
-    const versionNumber = existingCues.length + 1
+    const maxVersion = existingCues.reduce((m, c) => Math.max(m, c.version_number), 0)
+    const versionNumber = maxVersion + 1
     const safeLabel = sceneLabel.replace(/[^a-zA-Z0-9_\-]/g, '_')
 
     const isWav = audioBuffer.length >= 12 &&

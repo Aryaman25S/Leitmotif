@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import DeleteConfirmButton from '@/components/ui/delete-confirm-button'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 import MockCuePlayer from './MockCuePlayer'
 import type { MockCue as BaseMockCue } from '@/lib/store'
@@ -51,6 +52,8 @@ export default function GenerationWorkspace({
   const [jobStatus, setJobStatus] = useState(initialJobStatus)
   const [generating, setGenerating] = useState(false)
   const [approving, setApproving] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [unapprovingId, setUnapprovingId] = useState<string | null>(null)
   const [modelProvider, setModelProvider] = useState(defaultModelProvider)
 
   const isActive = jobStatus === 'queued' || jobStatus === 'processing'
@@ -131,13 +134,51 @@ export default function GenerationWorkspace({
     setApproving(null)
   }
 
+  async function handleDeleteCue(cueId: string) {
+    setDeletingId(cueId)
+    const res = await fetch(`/api/mock-cues/${cueId}`, { method: 'DELETE' })
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      toast.error(data.error ?? 'Could not delete cue')
+    } else {
+      toast.success('Mock cue deleted')
+      setMockCues((prev) => prev.filter((c) => c.id !== cueId))
+      router.refresh()
+    }
+    setDeletingId(null)
+  }
+
+  async function handleUnapprove(cueId: string) {
+    setUnapprovingId(cueId)
+    const res = await fetch(`/api/mock-cues/${cueId}/unapprove`, { method: 'POST' })
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      toast.error(data.error ?? 'Could not withdraw approval')
+    } else {
+      toast.success('Approval withdrawn')
+      setMockCues((prev) =>
+        prev.map((c) =>
+          c.id === cueId
+            ? { ...c, is_approved: false, approved_by: null, approved_at: null }
+            : c
+        )
+      )
+      router.refresh()
+    }
+    setUnapprovingId(null)
+  }
+
   // Sorted newest-first (store returns newest-first already, but be explicit)
   const sorted = [...mockCues].sort((a, b) => b.version_number - a.version_number)
   const latest = sorted[0] ?? null
-  const older  = sorted.slice(1)
 
-  const approvedCue     = mockCues.find((c) => c.is_approved)
+  const approvedCue = mockCues.find((c) => c.is_approved)
   const latestUnapproved = latest && !latest.is_approved ? latest : null
+
+  const featuredIds = new Set<string>()
+  if (latestUnapproved) featuredIds.add(latestUnapproved.id)
+  if (approvedCue && approvedCue.id !== latestUnapproved?.id) featuredIds.add(approvedCue.id)
+  const older = sorted.filter((c) => !featuredIds.has(c.id))
 
   return (
     <motion.div
@@ -229,6 +270,12 @@ export default function GenerationWorkspace({
           approving={approving === latestUnapproved.id}
           isLatest
           showApprove={canApproveCue}
+          canDelete={canGenerate}
+          onDelete={handleDeleteCue}
+          deletingId={deletingId}
+          canUnapprove={canApproveCue}
+          onUnapprove={handleUnapprove}
+          unapprovingId={unapprovingId}
         />
       )}
 
@@ -246,6 +293,12 @@ export default function GenerationWorkspace({
             approving={approving === approvedCue.id}
             isLatest={false}
             showApprove={canApproveCue}
+            canDelete={canGenerate}
+            onDelete={handleDeleteCue}
+            deletingId={deletingId}
+            canUnapprove={canApproveCue}
+            onUnapprove={handleUnapprove}
+            unapprovingId={unapprovingId}
           />
         </div>
       )}
@@ -259,6 +312,12 @@ export default function GenerationWorkspace({
             approving={approving}
             onApprove={handleApprove}
             showApprove={canApproveCue}
+            canDelete={canGenerate}
+            onDelete={handleDeleteCue}
+            deletingId={deletingId}
+            canUnapprove={canApproveCue}
+            onUnapprove={handleUnapprove}
+            unapprovingId={unapprovingId}
           />
         </>
       )}
@@ -279,20 +338,35 @@ function CueRow({
   approving,
   isLatest,
   showApprove = true,
+  canDelete = false,
+  onDelete,
+  deletingId = null,
+  canUnapprove = false,
+  onUnapprove,
+  unapprovingId = null,
 }: {
   cue: MockCueWithProvider
   onApprove: () => void
   approving: boolean
   isLatest: boolean
   showApprove?: boolean
+  canDelete?: boolean
+  onDelete?: (id: string) => Promise<void>
+  deletingId?: string | null
+  canUnapprove?: boolean
+  onUnapprove?: (id: string) => Promise<void>
+  unapprovingId?: string | null
 }) {
+  const isDeletingThis = deletingId === cue.id
+  const isUnapprovingThis = unapprovingId === cue.id
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-mono">
           v{cue.version_number} — {formatDistanceToNow(new Date(cue.created_at))} ago
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {cue.model_provider && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
               {PROVIDER_BADGE[cue.model_provider] ?? cue.model_provider}
@@ -304,20 +378,63 @@ function CueRow({
           {isLatest && !cue.is_approved && (
             <Badge variant="outline" className="text-xs">Reference only</Badge>
           )}
+          {canDelete && !cue.is_approved && onDelete && (
+            <DeleteConfirmButton
+              label="Delete"
+              confirmLabel="Delete cue"
+              size="sm"
+              className="h-7 px-2 text-xs shrink-0"
+              disabled={deletingId != null && !isDeletingThis}
+              onDelete={() => onDelete(cue.id)}
+            />
+          )}
         </div>
       </div>
 
       <AudioCuePlayer cue={cue} />
 
       {cue.is_approved ? (
-        <a
-          href={`/brief/${cue.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-xs underline text-muted-foreground hover:text-foreground"
-        >
-          Open composer brief (share this URL) →
-        </a>
+        <>
+          <a
+            href={`/brief/${cue.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-xs underline text-muted-foreground hover:text-foreground"
+          >
+            Open composer brief (share this URL) →
+          </a>
+          {canUnapprove && onUnapprove && (
+            <div className="space-y-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                disabled={isUnapprovingThis}
+                onClick={() => onUnapprove(cue.id)}
+              >
+                {isUnapprovingThis ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Withdrawing…
+                  </span>
+                ) : (
+                  'Withdraw approval'
+                )}
+              </Button>
+              {canDelete && (
+                <p className="text-[10px] text-muted-foreground text-center leading-snug">
+                  Withdraw approval to delete this version.
+                </p>
+              )}
+            </div>
+          )}
+          {canDelete && !canUnapprove && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              An approver must withdraw approval before this cue can be deleted.
+            </p>
+          )}
+        </>
       ) : showApprove ? (
         <div className="space-y-2">
           <p className="text-[11px] text-muted-foreground leading-snug">
@@ -356,11 +473,23 @@ function VersionHistory({
   approving,
   onApprove,
   showApprove = true,
+  canDelete = false,
+  onDelete,
+  deletingId = null,
+  canUnapprove = false,
+  onUnapprove,
+  unapprovingId = null,
 }: {
   cues: MockCueWithProvider[]
   approving: string | null
   onApprove: (id: string) => void
   showApprove?: boolean
+  canDelete?: boolean
+  onDelete?: (id: string) => Promise<void>
+  deletingId?: string | null
+  canUnapprove?: boolean
+  onUnapprove?: (id: string) => Promise<void>
+  unapprovingId?: string | null
 }) {
   const [open, setOpen] = useState(false)
 
@@ -384,6 +513,12 @@ function VersionHistory({
                 approving={approving === cue.id}
                 isLatest={false}
                 showApprove={showApprove}
+                canDelete={canDelete}
+                onDelete={onDelete}
+                deletingId={deletingId}
+                canUnapprove={canUnapprove}
+                onUnapprove={onUnapprove}
+                unapprovingId={unapprovingId}
               />
             </div>
           ))}

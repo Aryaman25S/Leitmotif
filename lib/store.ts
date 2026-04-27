@@ -791,6 +791,15 @@ export async function updateMockCue(
   }
 }
 
+export async function deleteMockCue(id: string): Promise<boolean> {
+  try {
+    await prisma.mockCue.delete({ where: { id } })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── Comments ──────────────────────────────────────────────────────────────────
 
 export async function getComments(sceneCardId: string): Promise<Comment[]> {

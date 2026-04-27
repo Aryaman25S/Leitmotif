@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   HeadObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -72,6 +73,26 @@ function ensureBucketDir(bucket: string): string {
 
 export function getFileKey(bucket: string, filename: string): string {
   return `${bucket}/${filename}`
+}
+
+/** Remove object from R2 or local uploads (best-effort; ignores missing keys). */
+export async function deleteStorageObject(fileKey: string): Promise<void> {
+  if (useR2) {
+    try {
+      await getS3().send(
+        new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileKey })
+      )
+    } catch {
+      // best-effort cleanup
+    }
+    return
+  }
+  const p = getFilePath(fileKey)
+  try {
+    if (fs.existsSync(p)) fs.unlinkSync(p)
+  } catch {
+    // ignore
+  }
 }
 
 export async function saveFile(bucket: string, filename: string, data: Buffer): Promise<string> {
