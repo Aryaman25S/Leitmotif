@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     era_reference: null,
     budget_reality: 'hybrid',
     do_not_generate: null,
-    model_provider: 'stable_audio',
+    model_provider: 'lyria',
   })
 
   return NextResponse.json({ project })

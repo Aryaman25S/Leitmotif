@@ -45,7 +45,7 @@ export default function GenerationWorkspace({
   latestIntentId,
   canGenerate = true,
   canApproveCue = true,
-  defaultModelProvider = 'stable_audio',
+  defaultModelProvider = 'lyria',
 }: GenerationWorkspaceProps) {
   const router = useRouter()
   const [mockCues, setMockCues] = useState<MockCueWithProvider[]>(initialCues)

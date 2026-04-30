@@ -144,7 +144,7 @@ export default async function ScenePage({
             latestIntentId={latestIntent?.id ?? null}
             canGenerate={viewerCanDirect}
             canApproveCue={viewerCanApprove}
-            defaultModelProvider={genSettings?.model_provider ?? 'stable_audio'}
+            defaultModelProvider={genSettings?.model_provider ?? 'lyria'}
           />
         </div>
       </div>

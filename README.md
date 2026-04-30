@@ -67,9 +67,9 @@ Alternatively reassign `owner_id` in the database to your other account’s prof
 
 ### 4. Environment (optional)
 
-- **`STABILITY_API_KEY`** — Stable Audio **2.5** mock cues via `.../stable-audio-2.5/text-to-audio` (default provider). Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY`.
+- **`STABILITY_API_KEY`** — Stable Audio **2.5** mock cues via `.../stable-audio-2.5/text-to-audio` (select **Stable Audio** in project settings; default provider is **Lyria**). Restart `npm run dev` after setting so [`next.config.ts`](next.config.ts) can expose `NEXT_PUBLIC_HAS_STABILITY_KEY`.
 - **`STABLE_AUDIO_CFG_SCALE`** / **`STABLE_AUDIO_STEPS`** — optional; defaults **7** and **50** (explicit CFG and step count; override for cost/latency or Stability’s recommended ranges).
-- **`GEMINI_API_KEY`** — Lyria 3 mock cues via Google Gemini API. Get a key at [AI Studio](https://aistudio.google.com/apikey). Select **Lyria 3 (Google)** in project generation settings to use this provider.
+- **`GEMINI_API_KEY`** — Lyria 3 mock cues via Google Gemini API (default provider). Get a key at [AI Studio](https://aistudio.google.com/apikey). Select **Stable Audio 2.5** in project settings if you prefer Stability instead.
 - **`NEXT_PUBLIC_APP_URL`** — base URL for invite and brief links in emails and JSON (e.g. `http://localhost:3000`). On Vercel, `VERCEL_URL` is used when this and `BETTER_AUTH_URL` are unset.
 - **`RESEND_API_KEY`** / **`RESEND_FROM`** — when both are set, [Resend](https://resend.com) sends **project invite** emails and **brief-ready** emails to composer / music-supervisor members (see [`.env.example`](.env.example)). Set **`RESEND_BRIEF_EMAILS=false`** to turn off brief emails only.
 - **`R2_*`** — Cloudflare R2 for uploads in production (see [`.env.example`](.env.example)).

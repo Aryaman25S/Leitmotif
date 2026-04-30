@@ -116,7 +116,7 @@ model GenerationSettings {
   era_reference            String?
   budget_reality           String?
   do_not_generate          String?
-  model_provider           String   @default("stable_audio")
+  model_provider           String   @default("lyria")
   updated_at               DateTime @updatedAt
 
   project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
@@ -202,7 +202,7 @@ model GenerationJob {
   scene_card_id     String
   intent_version_id String
   status            JobStatus @default(queued)
-  model_provider    String    @default("stable_audio")
+  model_provider    String    @default("lyria")
   positive_prompt   String
   negative_prompt   String?
   duration_sec      Float

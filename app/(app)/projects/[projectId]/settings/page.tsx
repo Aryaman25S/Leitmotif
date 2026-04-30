@@ -47,7 +47,7 @@ export default function ProjectSettingsPage() {
   const [eraReference, setEraReference] = useState('')
   const [budgetReality, setBudgetReality] = useState('hybrid')
   const [doNotGenerate, setDoNotGenerate] = useState('')
-  const [modelProvider, setModelProvider] = useState('stable_audio')
+  const [modelProvider, setModelProvider] = useState('lyria')
   const [members, setMembers] = useState<Member[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('composer')
@@ -71,7 +71,7 @@ export default function ProjectSettingsPage() {
           setEraReference(data.settings.era_reference ?? '')
           setBudgetReality(data.settings.budget_reality ?? 'hybrid')
           setDoNotGenerate(data.settings.do_not_generate ?? '')
-          setModelProvider(data.settings.model_provider ?? 'stable_audio')
+          setModelProvider(data.settings.model_provider ?? 'lyria')
         }
         if (data.members) setMembers(data.members)
         if (typeof data.viewerIsOwner === 'boolean') setViewerIsOwner(data.viewerIsOwner)

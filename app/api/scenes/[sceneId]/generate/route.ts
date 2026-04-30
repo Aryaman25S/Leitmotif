@@ -80,7 +80,7 @@ export async function POST(
   const modelProvider =
     requestedProvider && validProviders.includes(requestedProvider as typeof validProviders[number])
       ? requestedProvider
-      : (settings?.model_provider ?? 'stable_audio')
+      : (settings?.model_provider ?? 'lyria')
 
   let lyriaPrompt: string | undefined
   if (modelProvider === 'lyria') {

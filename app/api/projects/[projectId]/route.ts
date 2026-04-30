@@ -54,7 +54,7 @@ export async function PATCH(
     const validProviders = ['stable_audio', 'lyria']
     const provider = validProviders.includes(body.settings.model_provider)
       ? body.settings.model_provider
-      : 'stable_audio'
+      : 'lyria'
     await upsertGenerationSettings({
       project_id: projectId,
       ...body.settings,

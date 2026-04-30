@@ -32,7 +32,7 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
     durationSec,
     sceneLabel,
     intentVersionId,
-    modelProvider = 'stable_audio',
+    modelProvider = 'lyria',
     lyriaPrompt,
   } = payload
 
