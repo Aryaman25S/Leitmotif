@@ -1,6 +1,9 @@
 /**
  * Stable Audio 2.5 API call with local silent-WAV fallback.
  *
+ * POST .../stable-audio-2.5/text-to-audio — the model is selected by the URL path.
+ * (Older code incorrectly used .../stable-audio-2/..., which targets Stable Audio 2.)
+ *
  * If STABILITY_API_KEY is not set, returns a silent WAV so the generation loop
  * works without any API key.
  */
@@ -8,7 +11,28 @@
 import { generateSilentWav } from '@/lib/storage'
 
 const STABLE_AUDIO_ENDPOINT =
-  'https://api.stability.ai/v2beta/audio/stable-audio-2/text-to-audio'
+  'https://api.stability.ai/v2beta/audio/stable-audio-2.5/text-to-audio'
+
+/** Default CFG when env unset (explicit 7 tightens prompt vs SA 2.5’s low omit default). */
+const DEFAULT_CFG_SCALE = 7
+
+/** Default diffusion steps when env unset. */
+const DEFAULT_STEPS = 50
+
+function resolvedCfgScale(): number {
+  const raw = process.env.STABLE_AUDIO_CFG_SCALE?.trim()
+  if (raw === undefined || raw === '') return DEFAULT_CFG_SCALE
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_CFG_SCALE
+}
+
+function resolvedSteps(): number {
+  const raw = process.env.STABLE_AUDIO_STEPS?.trim()
+  if (raw === undefined || raw === '') return DEFAULT_STEPS
+  const n = Math.round(Number(raw))
+  if (!Number.isFinite(n)) return DEFAULT_STEPS
+  return Math.min(200, Math.max(4, n))
+}
 
 export type StableAudioGenerationSource = 'stable_api' | 'silent_mock'
 
@@ -132,12 +156,23 @@ async function fetchStableAudio(
   negativePrompt: string,
   clampedDuration: number
 ): Promise<Response> {
+  const steps = resolvedSteps()
+  const cfgScale = resolvedCfgScale()
+
   const fd = new FormData()
   fd.append('prompt', positivePrompt)
   if (negativePrompt) fd.append('negative_prompt', negativePrompt)
   fd.append('duration', String(clampedDuration))
   fd.append('output_format', 'wav')
-  fd.append('steps', '30')
+  fd.append('steps', String(steps))
+  fd.append('cfg_scale', String(cfgScale))
+
+  console.info('[leitmotif:stable-audio] request', {
+    endpoint: 'stable-audio-2.5/text-to-audio',
+    durationSec: clampedDuration,
+    steps,
+    cfg_scale: cfgScale,
+  })
 
   return fetch(STABLE_AUDIO_ENDPOINT, {
     method: 'POST',

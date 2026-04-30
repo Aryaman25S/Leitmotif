@@ -160,7 +160,7 @@ A common point of confusion during development was the distinction between **dat
 The Stable Audio 2.5 API was integrated in `lib/generation/stableAudio.ts`. The function:
 
 1. Takes a positive prompt, negative prompt, and duration
-2. POSTs to `https://api.stability.ai/v2beta/audio/stable-audio-2/generate`
+2. POSTs to `https://api.stability.ai/v2beta/audio/stable-audio-2.5/text-to-audio` (model is selected by URL path; `cfg_scale` and `steps` are sent explicitly).
 3. Receives a WAV buffer
 4. Includes a demo mode that returns a silent WAV when `STABILITY_API_KEY` is not set
 
