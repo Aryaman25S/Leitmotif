@@ -1,29 +1,33 @@
-export default function ProjectsLoading() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <div className="h-7 w-32 bg-muted rounded animate-pulse" />
-          <div className="h-4 w-48 bg-muted/60 rounded animate-pulse mt-2" />
-        </div>
-        <div className="h-8 w-28 bg-muted rounded-lg animate-pulse" />
-      </div>
+import { LeitmotifWorld } from '@/components/landing/LeitmotifWorld'
+import s from './projects.module.css'
+import { LoadingState, PageFooter, StaticFilterRail } from './parts'
+import { mastheadDate } from './lib'
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-border p-5 space-y-3"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="h-5 w-40 bg-muted rounded animate-pulse" />
-              <div className="h-5 w-16 bg-muted/60 rounded-full animate-pulse" />
+export default function ProjectsLoading() {
+  const now = new Date()
+  return (
+    <LeitmotifWorld>
+      <div className={s['ll-page']}>
+        <header className={s['ll-mast']}>
+          <div className={s['ll-mast-l']}>
+            <div className={s['ll-wordmark']}>
+              <span className={s['ll-perf']} /><em>Leitmotif</em>
             </div>
-            <div className="h-3.5 w-full bg-muted/40 rounded animate-pulse" />
-            <div className="h-3 w-24 bg-muted/30 rounded animate-pulse" />
           </div>
-        ))}
+          <div className={s['ll-mast-c']}>
+            <div className={s['ll-mast-cap']}>Tonight&rsquo;s bill</div>
+            <div className={s['ll-mast-date']}>{mastheadDate(now)}</div>
+          </div>
+          <div className={s['ll-mast-r']} />
+        </header>
+        <div className={s['ll-body']}>
+          <StaticFilterRail />
+          <main className={s['ll-main']}>
+            <LoadingState />
+          </main>
+        </div>
+        <PageFooter />
       </div>
-    </div>
+    </LeitmotifWorld>
   )
 }

@@ -14,12 +14,21 @@ import { cn } from '@/lib/utils'
 import { Music2, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface AppNavProps {
-  user: { email: string; name: string }
+  user?: { email: string; name: string }
   projectTitle?: string
 }
 
-export default function AppNav({ user, projectTitle }: AppNavProps) {
+export default function AppNav({ user: userProp, projectTitle }: AppNavProps) {
   const pathname = usePathname()
+  // When mounted from a non-async layout, the parent can't provide user info
+  // synchronously; fall back to better-auth's client session so we don't have
+  // to make the layout itself async (which would trip a Suspense boundary).
+  const session = authClient.useSession()
+  const sessionUser = session?.data?.user
+  const user = userProp ?? {
+    email: sessionUser?.email ?? '',
+    name: sessionUser?.name ?? '',
+  }
 
   async function handleSignOut() {
     try {

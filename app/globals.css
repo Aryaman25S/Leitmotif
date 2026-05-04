@@ -2034,10 +2034,12 @@ body:has(.leitmotif-world) {
 }
 
 /* Alternating spread tones across sections so the eye reads discrete pages.
-   border-top is suppressed because the FolioHead supplies its own break. */
-.leitmotif-world main > section:nth-of-type(odd)  { background: var(--bg);   }
-.leitmotif-world main > section:nth-of-type(even) { background: var(--bg-2); }
-.leitmotif-world main > section { border-top: 0; }
+   border-top is suppressed because the FolioHead supplies its own break.
+   Scoped to .landing-main so non-landing pages (e.g. /projects) that use
+   a <main> + <section> structure don't pick up the alternating tones. */
+.leitmotif-world .landing-main > section:nth-of-type(odd)  { background: var(--bg);   }
+.leitmotif-world .landing-main > section:nth-of-type(even) { background: var(--bg-2); }
+.leitmotif-world .landing-main > section { border-top: 0; }
 
 /* ── Spec card (used in hero + atmosphere detail) ─────────────────────────── */
 

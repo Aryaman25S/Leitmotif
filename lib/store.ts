@@ -235,6 +235,144 @@ export async function getProjectsWithRoleForProfile(profileId: string): Promise<
   }))
 }
 
+export interface ProjectListRow extends ProjectWithRole {
+  sceneCount: number
+  scenesWithIntents: number
+  cuesAwaitingApproval: number
+  cuesAwaitingAck: number
+  jobsInFlight: number
+  /** Display name of a complementary collaborator chosen by viewer's role. */
+  counterpartName: string | null
+  /** The complementary role used to render the credit-line suffix ("comp.", "dir."). */
+  counterpartRole: 'director' | 'composer' | 'music_supervisor' | 'sound_designer' | 'owner' | null
+}
+
+/**
+ * Projects-list rollup. One read of the project rows + five grouped aggregates,
+ * zipped in JS. For each project the viewer can see, returns counts the
+ * Standing column needs and a single named counterpart for the credit line.
+ */
+export async function getProjectsListForProfile(profileId: string): Promise<ProjectListRow[]> {
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { owner_id: profileId },
+        { project_members: { some: { user_id: profileId, accepted_at: { not: null } } } },
+      ],
+    },
+    include: {
+      owner: { select: { name: true, email: true } },
+      project_members: {
+        where: { accepted_at: { not: null } },
+        select: {
+          user_id: true,
+          role_on_project: true,
+          profile: { select: { name: true, email: true } },
+        },
+      },
+      _count: { select: { scene_cards: true } },
+    },
+    orderBy: { updated_at: 'desc' },
+  })
+
+  if (projects.length === 0) return []
+
+  const projectIds = projects.map((p) => p.id)
+
+  // Scenes with at least one intent_version — driven from SceneCard, scoped by project.
+  const scenesWithIntentRows = await prisma.sceneCard.groupBy({
+    by: ['project_id'],
+    where: { project_id: { in: projectIds }, intent_versions: { some: {} } },
+    _count: { _all: true },
+  })
+  const scenesWithIntents = new Map(scenesWithIntentRows.map((r) => [r.project_id, r._count._all]))
+
+  // Approval / acknowledgement state is per-scene, not per-MockCue row. A scene
+  // accumulates many MockCue versions across regenerations; only one can be
+  // approved at a time, so the right unit of work is the scene:
+  //   awaitingApproval := scene has cues but none are approved
+  //   awaitingAck      := scene has an approved cue that hasn't been acknowledged
+  const scenesWithCues = await prisma.sceneCard.findMany({
+    where: { project_id: { in: projectIds }, mock_cues: { some: {} } },
+    select: {
+      project_id: true,
+      mock_cues: { select: { is_approved: true, composer_acknowledged: true } },
+    },
+  })
+  const cuesAwaitingApproval = new Map<string, number>()
+  const cuesAwaitingAck = new Map<string, number>()
+  for (const scene of scenesWithCues) {
+    const approved = scene.mock_cues.find((c) => c.is_approved)
+    if (!approved) {
+      cuesAwaitingApproval.set(scene.project_id, (cuesAwaitingApproval.get(scene.project_id) ?? 0) + 1)
+    } else if (!approved.composer_acknowledged) {
+      cuesAwaitingAck.set(scene.project_id, (cuesAwaitingAck.get(scene.project_id) ?? 0) + 1)
+    }
+  }
+
+  const jobRows = await prisma.generationJob.findMany({
+    where: {
+      scene_card: { project_id: { in: projectIds } },
+      status: { in: ['queued', 'processing'] },
+    },
+    select: { scene_card: { select: { project_id: true } } },
+  })
+  const jobsInFlight = new Map<string, number>()
+  for (const row of jobRows) {
+    const pid = row.scene_card.project_id
+    jobsInFlight.set(pid, (jobsInFlight.get(pid) ?? 0) + 1)
+  }
+
+  return projects.map((p) => {
+    const isOwner = p.owner_id === profileId
+    const memberRole = p.project_members.find((m) => m.user_id === profileId)?.role_on_project
+    const viewerRole: string = isOwner ? 'owner' : (memberRole ?? 'viewer')
+
+    // Counterpart: pick by viewer role. owner/director see a composer; composer/sound_designer
+    // see the director (owner of the project, since intent ownership lives with the director);
+    // music_supervisor sees the director; viewer sees the director.
+    const composerMember = p.project_members.find((m) => m.role_on_project === 'composer')
+    const composerName = displayName(composerMember?.profile)
+    const ownerName = displayName(p.owner)
+    let counterpartName: string | null
+    let counterpartRole: ProjectListRow['counterpartRole']
+    if (viewerRole === 'owner' || viewerRole === 'director') {
+      counterpartName = composerName
+      counterpartRole = composerName ? 'composer' : null
+    } else {
+      counterpartName = ownerName
+      counterpartRole = ownerName ? 'director' : null
+    }
+
+    return {
+      id: p.id,
+      title: p.title,
+      format: p.format,
+      tone_brief: p.tone_brief ?? null,
+      owner_id: p.owner_id,
+      created_at: isoRequired(p.created_at),
+      updated_at: isoRequired(p.updated_at),
+      viewerRole,
+      sceneCount: p._count.scene_cards,
+      scenesWithIntents: scenesWithIntents.get(p.id) ?? 0,
+      cuesAwaitingApproval: cuesAwaitingApproval.get(p.id) ?? 0,
+      cuesAwaitingAck: cuesAwaitingAck.get(p.id) ?? 0,
+      jobsInFlight: jobsInFlight.get(p.id) ?? 0,
+      counterpartName,
+      counterpartRole,
+    }
+  })
+}
+
+function displayName(p: { name: string | null; email: string } | null | undefined): string | null {
+  if (!p) return null
+  const n = p.name?.trim()
+  if (n) return n
+  // Strip the local-part @host so a fallback is still presentable in the credit line.
+  const local = p.email.split('@')[0]
+  return local || null
+}
+
 export async function profileCanAccessProject(
   profileId: string,
   projectId: string
