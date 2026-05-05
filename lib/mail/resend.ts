@@ -75,14 +75,20 @@ export async function sendProjectInviteEmail(params: {
   inviterEmail: string
   inviteUrl: string
   roleLabel: string
+  note?: string | null
 }): Promise<SendMailResult> {
   const title = escapeHtml(params.projectTitle)
   const inviter = escapeHtml(params.inviterDisplay)
   const role = escapeHtml(params.roleLabel)
   const url = escapeHtml(params.inviteUrl)
+  const note = params.note?.trim() || null
+  const noteHtml = note
+    ? `<blockquote style="margin:16px 0;padding:8px 14px;border-left:2px solid #c25a3a;color:#444;font-style:italic;white-space:pre-wrap">${escapeHtml(note)}</blockquote>`
+    : ''
   const html = `
 <p>You have been invited to collaborate on <strong>${title}</strong> on Leitmotif as <strong>${role}</strong>.</p>
 <p><strong>${inviter}</strong> (${escapeHtml(params.inviterEmail)}) added you.</p>
+${noteHtml}
 <p><a href="${url}">Accept invite</a></p>
 <p style="color:#666;font-size:12px">If the button does not work, copy this link:<br/>${url}</p>
 `.trim()
@@ -90,6 +96,7 @@ export async function sendProjectInviteEmail(params: {
   const text = [
     `You were invited to "${params.projectTitle}" on Leitmotif as ${params.roleLabel}.`,
     `${params.inviterDisplay} (${params.inviterEmail}) invited you.`,
+    ...(note ? [`A line from ${params.inviterDisplay}:\n${note}`] : []),
     `Accept: ${params.inviteUrl}`,
   ].join('\n\n')
 

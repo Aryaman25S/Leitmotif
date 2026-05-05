@@ -1,0 +1,750 @@
+/*
+ * Project settings — "back of the clipboard." A bound production form, not
+ * a panel. Tokens come from the global world system on .leitmotif-world;
+ * grain + vignette are painted globally so we don't redeclare them.
+ *
+ * Class names mirror the design HTML one-for-one (mast → mast, sec → sec,
+ * roster → roster, etc.) so a side-by-side diff against
+ * /tmp/leitmotif-design/leitmotif/project/Leitmotif Project Settings.html
+ * stays legible. Buttons and anchors that need to win the
+ * `.leitmotif-world button {}` and `.leitmotif-world a {}` resets in
+ * app/globals.css are doubled (.foo.foo) per project convention.
+ */
+
+/* ─── Page shell ─────────────────────────────────────────── */
+.shell {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ─── Masthead ───────────────────────────────────────────── */
+.mast {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(280px, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 18px 40px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+  z-index: 1;
+}
+.mastL { display: flex; align-items: baseline; gap: 22px; white-space: nowrap; }
+.mastC { white-space: nowrap; text-align: center; }
+.mastR { display: flex; align-items: center; justify-content: flex-end; gap: 22px; white-space: nowrap; }
+.wordmark.wordmark {
+  font-family: var(--serif);
+  font-style: italic; font-weight: 500; font-size: 22px;
+  letter-spacing: 0.02em; color: var(--ink);
+  display: inline-flex; align-items: baseline;
+}
+.perf {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--ember); border-radius: 50%;
+  margin-right: 8px; transform: translateY(-3px);
+}
+.mastCap {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 3px;
+}
+.mastDate {
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink-2);
+}
+
+/* ─── Page ───────────────────────────────────────────────── */
+.page {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 56px 80px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+/* Crumb back to project */
+.crumbBack.crumbBack {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px dotted var(--rule-2);
+  padding-bottom: 2px;
+  transition: color .2s ease, border-color .2s ease;
+}
+.crumbBack.crumbBack:hover { color: var(--ember); border-color: var(--ember); }
+.crumbArrow {
+  font-family: var(--serif); font-style: italic; font-size: 14px;
+  color: var(--ember); display: inline-block; transition: transform .2s ease;
+}
+.crumbBack.crumbBack:hover .crumbArrow { transform: translateX(-3px); }
+
+/* ─── Clipboard form head ────────────────────────────────── */
+.formHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 32px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+  margin: 26px 0 0;
+}
+.formNo {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ember);
+  margin-bottom: 12px;
+}
+.formNo .punch {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--ember); border-radius: 50%;
+  margin: 0 8px 1px 0; vertical-align: middle;
+}
+.formTitle {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic; font-weight: 400;
+  font-size: clamp(38px, 4.2vw, 56px);
+  line-height: 1; letter-spacing: -0.012em;
+  color: var(--ink); text-wrap: balance;
+}
+.formTitle em {
+  font-style: normal;
+  color: var(--ink-2);
+  font-size: 0.55em;
+  margin-left: 18px;
+  letter-spacing: 0.005em;
+}
+.formStamp {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: right;
+  line-height: 1.7;
+}
+.formStamp em {
+  font-family: var(--serif);
+  font-style: italic; font-size: 14px;
+  text-transform: none; letter-spacing: 0;
+  color: var(--ink-2); display: block; margin-top: 2px;
+}
+.formStamp strong {
+  font-family: var(--mono); font-weight: 500;
+  font-size: 11px; letter-spacing: 0.14em;
+  color: var(--ember); text-transform: uppercase;
+  border: 1px solid color-mix(in oklab, var(--ember) 50%, var(--rule-2));
+  padding: 4px 8px 3px;
+  display: inline-block;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+.formMeta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--rule);
+  padding: 0;
+  margin-bottom: 0;
+}
+.formMeta > div {
+  padding: 14px 22px 14px 0;
+  border-right: 1px dotted var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.formMeta > div + div { padding-left: 22px; }
+.formMeta > div:last-child { border-right: 0; }
+.formMeta strong {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic; font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+/* ─── Section block ──────────────────────────────────────── */
+.sec {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 32px;
+  padding: 32px 0 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.sec:last-of-type { border-bottom: 0; }
+.secRail {
+  display: flex; flex-direction: column; gap: 6px;
+  padding-top: 4px;
+}
+.secNum {
+  font-family: var(--serif);
+  font-style: italic; font-weight: 500;
+  font-size: 28px; line-height: 1;
+  color: var(--ember);
+  letter-spacing: 0.01em;
+}
+.secTag {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.secBody { min-width: 0; }
+.secH {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-style: italic; font-weight: 400;
+  font-size: 26px; line-height: 1.1;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.secSub {
+  margin: 0 0 22px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; line-height: 1.45;
+  color: var(--ink-3); max-width: 56ch;
+}
+
+/* ─── Form lines (filled-in, not boxed) ──────────────────── */
+.field {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: baseline;
+  gap: 20px;
+  padding: 14px 0 10px;
+  border-bottom: 1px dotted var(--rule);
+}
+.field:first-of-type { border-top: 1px dotted var(--rule); }
+.fieldLabel {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 4px;
+}
+.fieldLabel .req { color: var(--ember); margin-left: 4px; }
+
+.fieldInput.fieldInput {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 4px 0 6px;
+  font-family: var(--serif);
+  font-style: italic; font-weight: 400;
+  font-size: 22px; line-height: 1.2;
+  color: var(--ink);
+  letter-spacing: 0.005em;
+  caret-color: var(--ember);
+}
+.fieldInput.fieldInput:focus { outline: none; }
+.fieldInput.fieldInput::placeholder { color: var(--ink-4); font-style: italic; }
+.fieldInput.fieldInput:disabled { color: var(--ink-2); cursor: default; }
+.fieldInput.fieldInput.mono {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.fieldAside {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+  padding-bottom: 6px;
+}
+.field textarea.fieldInput { resize: none; font-size: 17px; line-height: 1.55; }
+
+/* unit-suffix wrap (e.g. minutes) */
+.unitRow {
+  display: inline-flex; align-items: baseline; gap: 12px;
+  width: 100%;
+}
+.unitRow .fieldInput { width: auto; flex: 0 0 120px; }
+.unitRow .unit {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink-3);
+}
+.unitRow .runtimeHint {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.14em; color: var(--ink-4);
+  text-transform: uppercase;
+}
+
+/* Quiet selector (format / reference cue engine) */
+.quietSelect {
+  display: inline-flex; align-items: baseline; gap: 0;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid transparent;
+}
+.quietSelect .opt.opt {
+  font: inherit;
+  color: inherit;
+  background: none;
+  padding: 6px 14px 6px 0;
+  cursor: pointer;
+  border: 0;
+  border-bottom: 1px dotted var(--rule);
+  transition: color .2s ease, border-color .2s ease;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+.quietSelect .opt.opt + .opt { padding-left: 14px; }
+.quietSelect .opt.opt:not(:last-child) { border-right: 1px dotted var(--rule); }
+.quietSelect .opt.isOn {
+  color: var(--ink);
+  border-bottom-color: var(--ember);
+}
+.quietSelect .opt.opt:hover { color: var(--ember); }
+.quietSelect .opt.opt:disabled { cursor: default; opacity: 0.6; }
+.quietSelect .opt.opt:disabled:hover { color: inherit; }
+
+.quietEngineNote {
+  margin-top: 8px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-3); max-width: 54ch;
+}
+
+/* Section save line */
+.secSave {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  gap: 20px;
+}
+.secSaveState {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.secSaveState .glyph { color: var(--ember); margin-right: 6px; }
+.secSaveState.isDirty .glyph { color: var(--ember); }
+
+.btnSave.btnSave {
+  font-family: var(--sans); font-size: 11px;
+  font-weight: 500; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--bg);
+  background: var(--ink);
+  padding: 12px 22px;
+  border: 0; cursor: pointer;
+  transition: background .2s ease;
+}
+.btnSave.btnSave:hover { background: var(--ember); }
+.btnSave.btnSave:disabled { background: var(--ink-3); cursor: default; }
+
+/* ─── Roster ─────────────────────────────────────────────── */
+.roster {
+  margin-top: 6px;
+  border-top: 1px solid var(--ink);
+}
+.rosterHead {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 2.4fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 80px;
+  gap: 18px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.rosterRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 2.4fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 80px;
+  gap: 18px;
+  padding: 16px 0 14px;
+  border-bottom: 1px dotted var(--rule);
+  align-items: baseline;
+}
+.rosterRow.pending { background: linear-gradient(90deg, color-mix(in oklab, var(--ink) 0%, transparent) 0%, transparent 100%); }
+.rosterNum {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  text-align: right; padding-top: 2px;
+}
+.rosterName {
+  font-family: var(--serif); font-style: italic;
+  font-size: 21px; line-height: 1.1; color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.rosterName .you {
+  font-family: var(--mono); font-style: normal;
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ember);
+  margin-left: 8px; vertical-align: middle;
+}
+.rosterEmail {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.04em; color: var(--ink-3);
+  text-transform: lowercase;
+  margin-top: 4px;
+  display: block;
+  word-break: break-all;
+}
+.rosterRow.pending .rosterName { color: var(--ink-3); }
+.rosterRow.pending .rosterName em {
+  font-family: var(--mono); font-style: normal;
+  font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ink-4);
+  margin-right: 8px;
+}
+.rosterRole {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink-2);
+  padding-top: 2px;
+}
+.rosterRole .signed {
+  display: block;
+  font-family: var(--mono); font-style: normal;
+  font-size: 9px; letter-spacing: 0.20em;
+  text-transform: uppercase; color: var(--ember);
+  margin-top: 4px;
+}
+.rosterWhen {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  padding-top: 6px;
+  text-transform: lowercase;
+}
+.rosterWhen.pending {
+  color: var(--ink-4);
+  font-style: italic;
+}
+.rosterAct {
+  text-align: right; padding-top: 4px;
+}
+.btnStrike.btnStrike {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); background: none; border: 0;
+  border-bottom: 1px dotted var(--rule);
+  padding: 4px 0 3px; cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+}
+.btnStrike.btnStrike:hover { color: var(--pencil); border-color: var(--pencil); }
+.btnStrike.btnStrike:disabled { opacity: 0.5; cursor: default; }
+
+.rosterFoot {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 14px 0 6px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3);
+  border-top: 1px solid var(--ink);
+  margin-top: 0;
+}
+.rosterFoot strong {
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 14px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); margin-right: 6px;
+}
+.rosterFoot em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-3); margin-left: 6px;
+}
+
+/* ─── Invite block ───────────────────────────────────────── */
+.invite {
+  margin-top: 24px;
+  padding: 22px 24px 18px;
+  border: 1px dashed var(--rule-2);
+}
+.inviteHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 18px; margin-bottom: 14px;
+}
+.inviteHead h4 {
+  margin: 0;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 19px; color: var(--ink);
+}
+.inviteHead .note {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.inviteGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) auto;
+  gap: 24px 28px;
+  align-items: end;
+}
+.inviteCellRoles { grid-column: 1 / -1; }
+.inviteSubmit { grid-column: 2; grid-row: 1; }
+.inviteCell label {
+  display: block;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 8px;
+}
+.inviteCell .fieldInput {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 8px;
+}
+.inviteCell .fieldInput:focus { border-color: var(--ember); }
+
+.inviteRoles {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+}
+.inviteRoles .opt.opt {
+  font: inherit; color: var(--ink-3); background: none;
+  padding: 2px 0;
+  font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer;
+  border: 0; border-bottom: 1px solid transparent;
+  transition: color .2s ease, border-color .2s ease;
+  white-space: nowrap;
+}
+.inviteRoles .opt.opt:hover { color: var(--ink-2); }
+.inviteRoles .opt.isOn {
+  color: var(--ink);
+  border-bottom-color: var(--ember);
+}
+
+.btnInvite.btnInvite {
+  font-family: var(--sans); font-size: 11px;
+  font-weight: 500; letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bg); background: var(--ink);
+  padding: 13px 22px;
+  border: 0; cursor: pointer;
+  transition: background .2s ease;
+}
+.btnInvite.btnInvite:hover { background: var(--ember); }
+.btnInvite.btnInvite:disabled { background: var(--ink-3); cursor: default; }
+
+.inviteNote {
+  margin-top: 16px;
+  display: grid; grid-template-columns: 140px 1fr;
+  gap: 20px; align-items: baseline;
+}
+.inviteNote label {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 6px;
+}
+.inviteNoteArea.inviteNoteArea {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule);
+  outline: none;
+  resize: none;
+  padding: 4px 0 8px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px; line-height: 1.55;
+  color: var(--ink);
+}
+.inviteNoteArea.inviteNoteArea::placeholder { color: var(--ink-4); }
+
+/* ─── Strike production (delete) ─────────────────────────── */
+.strikeZone {
+  margin-top: 56px;
+  padding: 24px 0 20px;
+  border-top: 1px solid var(--rule);
+}
+.strikeLine {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+.strikeLine p {
+  margin: 0;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink-3);
+  max-width: 56ch;
+}
+.btnStrikeProd.btnStrikeProd {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--pencil);
+  background: none; border: 0;
+  border-bottom: 1px dotted color-mix(in oklab, var(--pencil) 60%, var(--rule-2));
+  padding: 4px 0 3px;
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+}
+.btnStrikeProd.btnStrikeProd:hover {
+  color: var(--ember);
+  border-color: var(--ember);
+}
+.btnStrikeProd.btnStrikeProd[data-armed="true"] { opacity: 0.4; pointer-events: none; }
+
+/* Strike confirm — full-width gravity, not a modal */
+.strikeConfirm {
+  margin-top: 22px;
+  border: 1px solid var(--pencil);
+  padding: 26px 28px 22px;
+  background: color-mix(in oklab, var(--pencil) 6%, transparent);
+  position: relative;
+}
+.strikeConfirm::before {
+  content: "—  STRIKE THE PRODUCTION  —";
+  position: absolute; top: -10px; left: 22px;
+  background: var(--bg);
+  padding: 0 10px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.32em;
+  color: var(--pencil);
+}
+.strikeConfirm h4 {
+  margin: 0 0 8px;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 24px; color: var(--ink);
+}
+.strikeConfirm p {
+  margin: 0 0 18px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; line-height: 1.55;
+  color: var(--ink-2); max-width: 60ch;
+}
+.strikeList {
+  list-style: none; padding: 0; margin: 0 0 22px;
+  display: grid; gap: 6px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--ink-2);
+  letter-spacing: 0.02em;
+}
+.strikeList li {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 14px; align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.strikeList li:last-child { border-bottom: 0; }
+.strikeList .label {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink);
+  letter-spacing: 0;
+  text-decoration: line-through;
+  text-decoration-color: var(--pencil);
+  text-decoration-thickness: 1px;
+}
+.strikeList .num {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.10em; color: var(--ink-3);
+}
+.strikeList .glyph {
+  color: var(--pencil); font-family: var(--mono);
+  font-size: 12px;
+}
+.strikeConfirmFoot {
+  display: flex; align-items: baseline; gap: 22px;
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid color-mix(in oklab, var(--pencil) 30%, var(--rule));
+  flex-wrap: wrap;
+}
+.confirmPrompt {
+  display: inline-flex; align-items: baseline; gap: 12px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.confirmTitleEm {
+  color: var(--pencil); font-style: italic;
+  font-family: var(--serif); font-size: 14px;
+  letter-spacing: 0; text-transform: none;
+}
+.confirmPrompt input.confirmInput.confirmInput {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--pencil);
+  outline: none;
+  padding: 4px 8px 4px 0;
+  font-family: var(--mono); font-size: 13px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--ink); width: 220px;
+  caret-color: var(--pencil);
+}
+.confirmPrompt input.confirmInput.confirmInput::placeholder {
+  color: var(--ink-4); letter-spacing: 0.20em;
+}
+.btnConfirmStrike.btnConfirmStrike {
+  margin-left: auto;
+  font-family: var(--sans); font-size: 11px;
+  font-weight: 500; letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ece4cc;
+  background: var(--pencil);
+  padding: 13px 22px;
+  border: 0; cursor: pointer;
+  transition: background .2s ease;
+}
+.btnConfirmStrike.btnConfirmStrike:hover { background: var(--ember); }
+.btnConfirmStrike.btnConfirmStrike:disabled {
+  background: color-mix(in oklab, var(--pencil) 35%, var(--ink-4));
+  cursor: not-allowed;
+  color: color-mix(in oklab, #ece4cc 60%, transparent);
+}
+.btnCancelStrike.btnCancelStrike {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3); background: none; border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0 3px;
+  cursor: pointer;
+  transition: color .2s ease;
+}
+.btnCancelStrike.btnCancelStrike:hover { color: var(--ink); }
+
+/* ─── Form foot ──────────────────────────────────────────── */
+.formFoot {
+  margin-top: 60px;
+  padding: 22px 0 8px;
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: 24px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.formFootC {
+  text-align: center;
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; text-transform: none; letter-spacing: 0;
+  color: var(--ink-2);
+}
+.formFoot > :last-child { text-align: right; }
+
+/* ─── Loading skeleton ───────────────────────────────────── */
+.skel {
+  background: linear-gradient(90deg, var(--rule) 0%, var(--rule-2) 50%, var(--rule) 100%);
+  background-size: 200% 100%;
+  animation: settingsShimmer 1.6s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes settingsShimmer {
+  0%, 100% { background-position: 200% 50%; }
+  50%      { background-position: -200% 50%; }
+}
+
+@media print {
+  .mast, .crumbBack, .strikeZone, .formFoot { display: none; }
+  .page { padding: 0; max-width: 100%; }
+}

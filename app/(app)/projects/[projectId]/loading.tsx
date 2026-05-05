@@ -1,42 +1,52 @@
+import { LeitmotifWorld } from '@/components/landing/LeitmotifWorld'
+import { LoadingState, PageFooter } from './parts'
+import s from './binder.module.css'
+
 export default function ProjectLoading() {
+  // Mirrors the design's "House lights · opening the binder" leader-countdown
+  // skeleton. Masthead is rendered as a static placeholder so the page-shell
+  // chrome doesn't pop in when the data lands.
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-7 w-52 bg-muted rounded animate-pulse" />
-            <div className="h-5 w-16 bg-muted/60 rounded-full animate-pulse" />
+    <LeitmotifWorld>
+      <div className={s.page}>
+        <header className={s.mast}>
+          <div className={s.mastL}>
+            <span className={s.wordmark}>
+              <span className={s.perf} /><em>Leitmotif</em>
+            </span>
           </div>
-          <div className="h-4 w-72 bg-muted/40 rounded animate-pulse mt-1.5" />
+          <div className={s.mastC}>
+            <div className={s.mastCap}>In the binder</div>
+            <div className={s.mastDate}>—</div>
+          </div>
+          <div className={s.mastR} aria-hidden />
+        </header>
+        <div className={s.body}>
+          <nav className={s.rail}>
+            <div className={s.railCap}>
+              <span className={s.smallcaps}>Reels</span>
+            </div>
+            <ol className={s.railList}>
+              {[0, 1, 2, 3].map((i) => (
+                <li key={i} className={s.railItem}>
+                  <button type="button" disabled aria-hidden="true">
+                    <span className={s.railMark}>·</span>
+                    <span className={s.railBody}>
+                      <span className={s.skel} style={{ width: 60, height: 14, display: 'block', marginBottom: 4 }} />
+                      <span className={s.skel} style={{ width: 110, height: 11, display: 'block' }} />
+                    </span>
+                    <span className={s.skel} style={{ width: 22, height: 11, display: 'block' }} />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </nav>
+          <main className={s.main}>
+            <LoadingState />
+          </main>
         </div>
-        <div className="h-8 w-8 bg-muted rounded-lg animate-pulse" />
+        <PageFooter projectTitle="…" />
       </div>
-
-      <div className="h-px bg-border my-6" />
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="h-4 w-28 bg-muted/50 rounded animate-pulse" />
-        <div className="h-7 w-24 bg-muted rounded-lg animate-pulse" />
-      </div>
-
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 p-4 rounded-lg border border-border"
-          >
-            <div className="h-4 w-8 bg-muted/50 rounded animate-pulse" />
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-              <div className="h-3 w-32 bg-muted/40 rounded animate-pulse" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 bg-muted/40 rounded-full animate-pulse" />
-              <div className="h-3 w-16 bg-muted/40 rounded animate-pulse" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </LeitmotifWorld>
   )
 }

@@ -1,0 +1,1558 @@
+/*
+ * Cue editor — the workbench. One coherent leaf for one cue.
+ * Picture · Brief · Result · Delivery, in two columns.
+ *
+ * Tokens come from the world system (.leitmotif-world / data-world). This
+ * module owns layout only. Grain & vignette are painted globally by
+ * .leitmotif-world::before/::after.
+ *
+ * Print-mode flourishes (paper-edge between columns, cream backgrounds on
+ * voice/wave/result) read [data-world="print"] from an ancestor.
+ */
+
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+}
+
+/* ── Slate (sub-masthead identifying the leaf) ───────────────────────────── */
+/* Two columns: primary (title + quiet cue metadata) | right (TC + status). */
+.slate {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: end;
+  gap: 8px 32px;
+  padding: 22px 40px 24px;
+  border-bottom: 1.5px solid var(--ink);
+  background: var(--bg);
+  position: relative;
+}
+.slate::before {
+  content: "";
+  position: absolute;
+  left: 40px; right: 40px; bottom: -4px;
+  height: 1px; background: var(--rule);
+}
+.slateCrumbs {
+  grid-column: 1 / -1; grid-row: 1;
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: 4px;
+}
+/* Class chained twice to clear .leitmotif-world a { color: inherit }. */
+.crumbBack.crumbBack {
+  color: var(--ink-2);
+  transition: color .2s ease;
+}
+.crumbBack.crumbBack:hover { color: var(--ember); }
+.crumbBack span { border-bottom: 1px dotted var(--rule-2); padding-bottom: 1px; }
+.slatePrimary {
+  grid-column: 1; grid-row: 2;
+  text-align: left;
+  min-width: 0;
+}
+/* Quiet eyebrow that carries the cue identifier and position above the
+ * primary title. Cue number sits in ember to keep it findable; position is
+ * subdued. No bordered stamp — just typography. */
+.slateMeta {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.slateMetaCue {
+  color: var(--ember);
+  letter-spacing: 0.28em;
+}
+.slateMetaSep { color: var(--ink-4); }
+.slateMetaPos { color: var(--ink-2); }
+.slateTitle {
+  margin: 0;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: clamp(34px, 3.6vw, 48px); line-height: 1;
+  letter-spacing: -0.012em; color: var(--ink);
+  text-wrap: balance;
+}
+.slateR {
+  grid-column: 2; grid-row: 2;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.tc {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 12.5px;
+  letter-spacing: 0.06em; color: var(--ink-2);
+}
+.tc em { font-style: normal; color: var(--ink); }
+.tcArrow { color: var(--ink-4); }
+.tcDur { color: var(--ink-3); margin-left: 4px; }
+.slateStatus {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-family: var(--serif); font-style: italic; font-size: 15px;
+}
+.statusMark {
+  font-family: var(--mono); font-style: normal; font-size: 12px;
+}
+.statusQuiet { color: var(--ink-3); }
+.statusQuiet .statusMark { color: var(--ink-4); }
+.statusWarm { color: var(--ink); }
+.statusWarm .statusMark { color: var(--ember); animation: cepulse 1.6s ease-in-out infinite; }
+.statusDone { color: var(--ink); }
+.statusDone .statusMark { color: var(--ember); }
+
+@keyframes cepulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+/* ── Body — two-column workbench ─────────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  flex: 1;
+}
+.colLeft {
+  padding: 32px 32px 36px 40px;
+  border-right: 1px solid var(--rule);
+  background: var(--bg);
+  min-width: 0;
+}
+.colRight {
+  padding: 32px 40px 36px 32px;
+  background: var(--bg);
+  position: relative;
+  min-width: 0;
+}
+/* Print-only: faint paper-edge between columns. */
+:where([data-world="print"]) .colRight {
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--ink) 8%, transparent) 0%, transparent 18px),
+    var(--bg);
+}
+
+@media (max-width: 960px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .colLeft { border-right: 0; border-bottom: 1px solid var(--rule); padding: 24px 24px 28px; }
+  .colRight { padding: 24px 24px 28px; }
+  .slate { padding: 18px 24px 20px; }
+  .slate::before { left: 24px; right: 24px; }
+}
+
+/* ── Block heads (major sections inside columns) ─────────────────────────── */
+.block { margin-bottom: 36px; }
+.block:last-child { margin-bottom: 0; }
+.blockHead {
+  display: flex; align-items: baseline; gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid var(--ink);
+  margin-bottom: 22px;
+}
+.blockNum {
+  font-family: var(--serif); font-style: italic;
+  font-size: 24px; color: var(--ember); line-height: 1;
+}
+.blockTitle {
+  margin: 0;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 28px; color: var(--ink); line-height: 1; letter-spacing: -0.005em;
+}
+.blockAside {
+  margin-left: auto;
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-3);
+}
+.blockAside em { color: var(--ink-2); font-style: italic; }
+
+/* ── Picture plate ───────────────────────────────────────────────────────── */
+.picture { display: flex; flex-direction: column; gap: 0; }
+.pictureStrip {
+  display: grid;
+  grid-template-columns: 14px 1fr 14px;
+  background: #000;
+  border: 1px solid var(--rule-2);
+}
+:where([data-world="print"]) .pictureStrip {
+  background: #1a1612;
+  border-color: var(--ink-3);
+}
+.picturePerfs {
+  background-image:
+    radial-gradient(circle at 50% 14px,  var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 38px,  var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 62px,  var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 86px,  var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 110px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 134px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 158px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 182px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 206px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 230px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 254px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 278px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 302px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 326px, var(--bg) 2.4px, transparent 3px),
+    radial-gradient(circle at 50% 350px, var(--bg) 2.4px, transparent 3px);
+  background-repeat: repeat-y;
+}
+.pictureFrame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #0a0907;
+  display: flex; align-items: stretch; justify-content: stretch;
+  overflow: hidden;
+}
+:where([data-world="print"]) .pictureFrame { background: #1a1612; }
+.pictureVideo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #0a0907;
+}
+.pictureMeta {
+  position: absolute; inset: 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 14px 18px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(232,223,201,0.7);
+  pointer-events: none;
+}
+.pictureMetaCue {
+  color: var(--ember);
+  border: 1px solid var(--ember);
+  padding: 3px 6px 2px;
+  margin-right: 8px;
+}
+.pictureMetaR { text-align: right; line-height: 1.5; }
+
+.pictureEmpty .pictureFrame {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0 14px,
+      rgba(232,223,201,0.04) 14px 15px),
+    #0a0907;
+}
+.pictureEmptyPrompt {
+  margin: auto;
+  text-align: center;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 28px 32px;
+  border: 1px dashed rgba(232,223,201,0.22);
+  max-width: 60%;
+  background: rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: border-color .2s ease;
+}
+.pictureEmptyPrompt:hover { border-color: rgba(194,90,58,0.6); }
+.pictureEmptyPrompt em {
+  font-family: var(--mono); font-style: normal;
+  font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ember);
+}
+.pictureEmptyPrompt strong {
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 22px; color: rgba(232,223,201,0.9);
+}
+.pictureEmptyPrompt span {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; line-height: 1.45; color: rgba(232,223,201,0.55);
+  max-width: 36ch; margin: 0 auto;
+}
+.pictureEmptyInput { display: none; }
+
+/* scrub rail (live — only mounted when there is a clip) */
+.pictureRail {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px 12px;
+  background: var(--bg-2);
+  border-left: 1px solid var(--rule-2);
+  border-right: 1px solid var(--rule-2);
+  border-bottom: 1px solid var(--rule-2);
+}
+.scrub {
+  position: relative;
+  height: 28px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+.scrubFill {
+  position: absolute; left: 0; top: 14px;
+  height: 1px;
+  background: var(--ember);
+  transition: width .08s linear;
+}
+.scrubMark {
+  position: absolute; top: 8px;
+  width: 1px; height: 12px;
+  background: var(--ink-3);
+}
+.scrubMarkHere {
+  background: var(--ember);
+  height: 18px; top: 5px;
+  transition: left .08s linear;
+}
+.scrubTick {
+  position: absolute; top: 22px; left: 0;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  white-space: nowrap;
+}
+.scrubMarkHere .scrubTick { color: var(--ember); }
+.pictureRailC {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px;
+  margin-top: 10px;
+}
+/* Doubled selector beats `.leitmotif-world button` (0,1,1) reset which
+ * otherwise wipes border, color, background, padding on every <button>
+ * in this module. See feedback_consult_design_reference.md. */
+.plBtn.plBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--rule-2); color: var(--ember); font-size: 11px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.plBtn.plBtn:hover { border-color: var(--ember); }
+.plNow {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.06em; color: var(--ink-2);
+}
+.plNow em { color: var(--ink-3); font-style: normal; }
+
+.pictureFoot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; color: var(--ink-3);
+}
+.pictureFoot a, .pictureFoot button {
+  color: var(--ink-2);
+  border-bottom: 1px dotted var(--rule-2);
+  background: none; border-top: 0; border-left: 0; border-right: 0;
+  font: inherit;
+  padding: 0; cursor: pointer;
+}
+.pictureFoot a:hover, .pictureFoot button:hover {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+.pictureFootR {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--ink-3); font-style: normal;
+}
+.voiceStrokeInline {
+  display: inline-block;
+  width: 18px; height: 1.5px;
+  background: var(--ember);
+  vertical-align: middle;
+  margin-right: 10px;
+  margin-top: -3px;
+}
+
+/* ── Field — generic shared header ───────────────────────────────────────── */
+.field { margin-bottom: 30px; }
+.field:last-child { margin-bottom: 0; }
+.fieldHead {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 14px;
+}
+.fieldNo {
+  font-family: var(--serif); font-style: italic;
+  font-size: 18px; color: var(--ember); line-height: 1; min-width: 22px;
+}
+.fieldLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 22px; color: var(--ink); line-height: 1.1; letter-spacing: -0.005em;
+}
+.fieldRule {
+  flex: 1; height: 1px; background: var(--rule);
+  align-self: center; min-width: 16px;
+}
+.fieldHint {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+}
+/* ── Atmospheres ─────────────────────────────────────────────────────────── *
+ * 14 moods, three energy tiers. The taxonomy stores slash-joined synonyms
+ * (e.g. "Wonder / Awe / Vastness"); the chip shows only the head word by
+ * default. On hover or when selected, the synonym tail expands inline via
+ * a max-width transition, so the chip itself "opens up" when engaged.
+ *
+ * Selection is a director's marker pass — a translucent ember rectangle
+ * sat behind the word, skewed slightly off-axis so it reads as hand-pulled
+ * rather than a button background. No pencil ellipse, no underline. */
+
+.tier {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 22px;
+  align-items: baseline;
+  padding: 12px 0;
+}
+.tier + .tier {
+  border-top: 1px dotted var(--rule-2);
+}
+.tierCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+}
+.atms {
+  display: flex; flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
+}
+.atm {
+  position: relative;
+  z-index: 0;
+  display: inline-flex; align-items: baseline;
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink-2); line-height: 1.3;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: color .15s ease;
+  white-space: nowrap;
+}
+.atm:hover { color: var(--ink); }
+.atm:disabled { cursor: not-allowed; opacity: 0.35; }
+.atm:disabled:hover { color: var(--ink-2); }
+.atmWord { white-space: nowrap; }
+
+/* Synonym tail — collapsed by default, expands on hover/selected via
+ * max-width transition. Setting a max-width that exceeds the actual text
+ * width animates smoothly to the natural content width without jank.
+ * The tail is aria-hidden because the full label is already in `title`. */
+.atmAlt {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: baseline;
+  color: var(--ink-4);
+  font-size: 14px;
+  opacity: 0;
+  transition:
+    max-width .35s cubic-bezier(0.2, 0.65, 0.28, 1),
+    opacity .25s ease,
+    color .2s ease;
+}
+.atmAltSep { color: var(--ink-4); }
+.atm:hover .atmAlt,
+.atm:focus-visible .atmAlt {
+  max-width: 24em;
+  opacity: 0.85;
+  color: var(--ink-3);
+}
+
+/* Selected: hand-pulled ember marker. The ::before is a skewed ember
+ * rectangle behind the text; the word itself flips to ink so it reads
+ * over the marker. The skew gives the rectangle a hand-drawn quality —
+ * the user shouldn't read it as a button background. */
+.atmOn { color: var(--ink); }
+.atmOn::before {
+  content: "";
+  position: absolute;
+  inset: 1px -4px 2px -4px;
+  background: color-mix(in oklab, var(--ember) 32%, transparent);
+  z-index: -1;
+  transform: skewX(-8deg);
+  pointer-events: none;
+  transition: background .2s ease;
+}
+.atmOn:hover::before {
+  background: color-mix(in oklab, var(--ember) 42%, transparent);
+}
+.atmOn .atmAlt,
+.atmOn:hover .atmAlt {
+  max-width: 24em;
+  opacity: 1;
+  color: color-mix(in oklab, var(--ink) 80%, var(--ember));
+}
+.atmOn .atmAltSep {
+  color: var(--ember);
+}
+
+/* ── "Where the music sits" — typographic equalizer ──────────────────────── */
+/* Each sub-row is a dial: a thin rule with stop-ticks, an active ember dot,
+ * and an italic-ember caption for the chosen stop. Shares chrome with the
+ * BPM rail so the page reads as one consistent set of dials. */
+.where {
+  display: flex; flex-direction: column; gap: 28px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 26px 0;
+}
+.whereRow {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.whereCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+  padding-top: 6px;
+}
+.whereScale {
+  display: flex; flex-direction: column; gap: 10px;
+  min-width: 0;
+}
+/* Dial track: 18px tall (room for the dot + a 12px tick), full width. The
+ * single horizontal line is the rule; stops are absolutely positioned along
+ * it by percentage, so 5-stop and 3-stop scales align under each other. */
+.whereTrack {
+  position: relative;
+  height: 18px;
+  margin: 6px 6px 0;
+}
+.whereLine {
+  position: absolute;
+  left: 0; right: 0; top: 9px;
+  height: 1px;
+  background: var(--rule-2);
+  pointer-events: none;
+}
+/* Each stop is a button positioned along the rule by left%. The visible
+ * tick (whereDot) is centered on that point; the label hides under the
+ * track and only surfaces on hover/focus or when the stop is active. */
+.whereStop {
+  position: absolute;
+  top: 0; bottom: 0;
+  transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; padding: 0;
+  cursor: pointer;
+  /* Generous hit-target either side of the dot without visual bulk. */
+  width: 36px;
+}
+.whereStop:disabled { cursor: not-allowed; }
+.whereDot {
+  display: block;
+  width: 1.5px; height: 12px;
+  background: var(--ink-3);
+  transition: background .15s ease, height .15s ease, width .15s ease;
+}
+.whereStop:hover .whereDot,
+.whereStop:focus-visible .whereDot {
+  background: var(--ink);
+}
+/* Stop labels are always visible — every stop on every dial reads as a
+ * named gradation, like a thermometer. Hover brightens; active flips to
+ * ember. The first/last stops anchor their labels to the rail's end so
+ * "Score only" and "Sound only" don't get clipped at the column edges. */
+.whereStopLabel {
+  position: absolute;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.06em; color: var(--ink-4);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color .15s ease;
+}
+.whereStop:first-child .whereStopLabel {
+  left: 0;
+  transform: none;
+  text-align: left;
+}
+.whereStop:last-child .whereStopLabel {
+  left: auto;
+  right: 0;
+  transform: none;
+  text-align: right;
+}
+.whereStop:hover .whereStopLabel,
+.whereStop:focus-visible .whereStopLabel {
+  color: var(--ink-2);
+}
+/* Active stop: filled ember dot — same proportions as the BPM pip. */
+.whereStopOn .whereDot {
+  background: var(--ember);
+  width: 2.5px;
+  height: 16px;
+  margin-top: -2px;
+}
+.whereStopOn .whereStopLabel {
+  color: var(--ember);
+}
+/* Caption sits below the rule; gives the active stop's label + gloss a
+ * proper italic line to read, matching the editorial tone of the other
+ * fields. The caption row reserves a min-height so an empty selection
+ * doesn't collapse the layout. */
+/* Caption sits below the stop labels (which are themselves below the rule).
+ * The gloss reads as a single italic line; on empty selection a quiet mono
+ * placeholder takes its place. */
+.whereCaption {
+  min-height: 22px;
+  padding-top: 30px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; line-height: 1.4;
+  color: var(--ink-2);
+}
+.whereCaptionGloss { color: var(--ink-2); }
+.whereCaptionEmpty {
+  color: var(--ink-4);
+  font-family: var(--mono); font-style: normal;
+  font-size: 10px; letter-spacing: 0.18em; text-transform: lowercase;
+}
+.whereExtra {
+  margin-top: 4px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; color: var(--ink-3); line-height: 1.4;
+}
+.whereExtra em { color: var(--ink-2); font-style: italic; }
+
+@media (max-width: 720px) {
+  .whereRow { grid-template-columns: 1fr; gap: 8px; }
+  .whereCap { padding-top: 0; }
+  .whereTrack { margin: 12px 12px 0; }
+}
+
+/* ── Functions ladder ────────────────────────────────────────────────────── */
+.fns {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px;
+}
+/* Class chained twice (.fn.fn) so this rule's specificity (0,2,0) beats
+ * the global `.leitmotif-world button { background: none; border: 0; }`
+ * reset (0,1,1). Without this doubling the border-bottom is silently
+ * stripped by the global reset and no divider renders. Same delicate
+ * 1px dotted treatment used by the input/select underlines, picture-foot
+ * links, and version stack rows — all native CSS, no gradient hack. */
+.fn.fn {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  text-align: left;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  background: none;
+  cursor: pointer;
+  transition: background .2s ease;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+.fn.fn:hover { background: color-mix(in oklab, var(--ink) 4%, transparent); }
+.fnMark {
+  font-family: var(--mono); font-size: 13px; color: var(--ink-3); line-height: 1;
+}
+.fnBody { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fnLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 18px; color: var(--ink); line-height: 1.1;
+}
+.fnDesc {
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; color: var(--ink-3); line-height: 1.35;
+}
+.fnOn { background: color-mix(in oklab, var(--ember) 7%, transparent); }
+.fnOn .fnMark  { color: var(--ember); }
+.fnOn .fnLabel { color: var(--ink); font-weight: 500; }
+.fnOn .fnDesc  { color: var(--ink-2); }
+
+@media (max-width: 720px) {
+  .fns { grid-template-columns: 1fr; }
+}
+
+/* ── Density ladder ──────────────────────────────────────────────────────── */
+.density {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 18px 0;
+}
+.dens {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 12px 6px;
+  background: none; border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .2s ease;
+  font: inherit; color: inherit;
+}
+.dens:hover { background: color-mix(in oklab, var(--ink) 3%, transparent); }
+.densCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.18em; color: var(--ink-3);
+}
+.densGlyph {
+  display: inline-flex; align-items: flex-end; gap: 2px;
+  height: 30px;
+}
+.densGlyph i {
+  display: block; width: 3px;
+  background: var(--ink-3);
+  font-style: normal;
+}
+.densLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-2);
+}
+.densOn {
+  background: color-mix(in oklab, var(--ember) 9%, transparent);
+}
+.densOn .densCap { color: var(--ember); }
+.densOn .densGlyph i { background: var(--ember); }
+.densOn .densLabel { color: var(--ink); font-weight: 500; }
+
+/* ── Voice ──────────────────────────────────────────────────────────────── */
+.voice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.voicePane {
+  border: 1px solid var(--rule);
+  padding: 16px 18px;
+  background: color-mix(in oklab, var(--ink) 2%, transparent);
+  min-height: 120px;
+  position: relative;
+}
+:where([data-world="print"]) .voicePane {
+  background: color-mix(in oklab, #fff 10%, transparent);
+  box-shadow: 0 1px 0 var(--rule-2);
+}
+.voicePaneNeg {
+  background: color-mix(in oklab, var(--pencil) 6%, transparent);
+  border-color: color-mix(in oklab, var(--pencil) 30%, var(--rule));
+}
+.voiceCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: 10px;
+}
+.voicePaneNeg .voiceCap { color: var(--pencil); }
+.voicePaneNeg .voiceCap em { font-style: normal; }
+.voiceTextarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  min-height: 84px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; line-height: 1.5; color: var(--ink);
+}
+.voiceTextarea::placeholder {
+  color: var(--ink-3); opacity: 1;
+}
+.voiceStroke {
+  display: inline-block;
+  width: 18px; height: 1.5px;
+  background: var(--ember);
+  vertical-align: middle;
+  margin-right: 10px;
+  margin-top: -3px;
+}
+.voicePaneNeg .voiceStroke { background: var(--pencil); }
+
+@media (max-width: 720px) {
+  .voice { grid-template-columns: 1fr; }
+}
+
+/* ── Specs (knobs) ───────────────────────────────────────────────────────── */
+.knobs {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 22px 28px;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.knobCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.knobCap span {
+  text-transform: none; letter-spacing: 0.04em;
+  font-family: var(--serif); font-style: italic; font-size: 11px;
+  color: var(--ember);
+  margin-left: 6px;
+}
+.knobVal {
+  font-family: var(--serif); font-style: italic;
+  font-size: 22px; color: var(--ink); line-height: 1.15;
+}
+.knobValQuiet { color: var(--ink-3); }
+.knobInput {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink);
+  outline: none;
+}
+.knobInput:focus { border-bottom-color: var(--ember); }
+.knobSelect {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink);
+  outline: none;
+  appearance: none;
+}
+.knobSelect:focus { border-bottom-color: var(--ember); }
+/* BPM column — grid keeps the input and rail in row 1 (so their bottoms
+ * align with the Format/Key select underlines in adjacent columns) and
+ * confines the foot ticks to row 2 column 2 only (so the leftmost tick
+ * sits at the rail's start, not under the BPM number). The first row's
+ * 34px height matches the natural height of `.knobSelect` (16px font at
+ * inherited line-height ≈ 1.55, plus 4px+4px padding and 1px border),
+ * so the rail bottom and the select underlines share a baseline. */
+.bpmGrid {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  grid-template-rows: 34px auto;
+  column-gap: 14px;
+  align-items: end;
+}
+.bpmInput {
+  grid-column: 1; grid-row: 1;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0;
+  font-family: var(--serif); font-style: italic;
+  font-size: 22px; line-height: 1;
+  color: var(--ink);
+  outline: none;
+  text-align: left;
+}
+.bpmInput::placeholder { color: var(--ink-4); font-style: italic; }
+.bpmInput:focus { border-bottom-color: var(--ember); }
+.bpmInput:disabled { cursor: not-allowed; opacity: 0.6; }
+/* Hide spinner buttons so the input reads as typed, not a stepper —
+ * the slider next to it covers that role. */
+.bpmInput::-webkit-inner-spin-button,
+.bpmInput::-webkit-outer-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.bpmInput[type="number"] { -moz-appearance: textfield; }
+
+/* Rail line is a 1px dotted bottom border on the rail container itself —
+ * same texture as the Format/Key select underlines, so the BPM column
+ * reads as a member of the same input set rather than a different kind
+ * of control. Native dotted at 1px renders adequately here because we're
+ * matching the same selector treatment that already works on those
+ * adjacent selects. */
+.bpmRail {
+  grid-column: 2; grid-row: 1;
+  position: relative;
+  height: 18px;
+  align-self: end;
+  border-bottom: 1px dotted var(--rule-2);
+}
+
+/* Cue marker: a small ember triangle floating just above the rail with
+ * a 1.5px stem connecting it down to the rail line. Reads as a tape-deck
+ * playhead — the apex of the triangle and the stem together point to
+ * the exact BPM position. The .bpmPip element itself is just a 0×0
+ * positioning anchor at `left:X%`; the visible glyphs are pseudo-
+ * elements so the inline style only has to set the horizontal position. */
+.bpmPip {
+  position: absolute;
+  bottom: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+/* The triangle ▼ — base 8px wide, height 7px, apex at the bottom of the
+ * triangle. The triangle sits 4px above the rail line, leaving room for
+ * the connecting stem below it. Centered on the pip's `left` value via
+ * margin-left equal to half the triangle's base width. */
+.bpmPip::before {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  margin-left: -4px;
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 7px solid var(--ember);
+}
+/* The stem — 1.5px wide ember bar from rail line up to the triangle's
+ * base. Sits inside the rail container so it doesn't bleed into the
+ * foot row below. */
+.bpmPip::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin-left: -0.75px;
+  width: 1.5px;
+  height: 4px;
+  background: var(--ember);
+}
+.bpmRange {
+  -webkit-appearance: none; appearance: none;
+  position: absolute;
+  inset: -8px 0 -4px;
+  width: 100%;
+  background: transparent;
+  cursor: ew-resize;
+  margin: 0;
+}
+.bpmRange::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 22px;
+  background: transparent;
+  cursor: ew-resize;
+}
+.bpmRange::-moz-range-thumb {
+  width: 14px; height: 22px;
+  background: transparent;
+  border: 0;
+  cursor: ew-resize;
+}
+.bpmRange:disabled { cursor: not-allowed; }
+
+/* Foot ticks live in row 2 col 2, absolute-positioned at their proportional
+ * value-position along the rail (30–200 scale), not equally spaced. */
+.bpmFoot {
+  grid-column: 2; grid-row: 2;
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+}
+.bpmFoot > span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .knobs { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Spec dossier (translation) ──────────────────────────────────────────── */
+.spec {
+  margin-top: 22px;
+  border-top: 1.5px solid var(--ink);
+  padding-top: 12px;
+}
+/* Quiet roll-up: not a peer field, a derived view. Italic serif keeps it
+ * inside the page's editorial register; tracking and uppercase deliberately
+ * avoided so the line doesn't compete with section heads above.
+ * Doubled selector to clear the global button reset (padding, color). */
+.specHead.specHead {
+  display: flex; align-items: baseline; gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 0;
+  background: none; border: 0;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+.specHead.specHead:hover .specHeadL { color: var(--ember); }
+.specHeadArrow {
+  color: var(--ember);
+  font-family: var(--serif); font-size: 14px; line-height: 1;
+  width: 14px; flex-shrink: 0;
+}
+.specHeadL {
+  flex: 1;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink); line-height: 1.2;
+  transition: color .2s ease;
+}
+.specHeadR {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.specGrid {
+  display: grid; grid-template-columns: 140px 1fr;
+  column-gap: 28px;
+  padding: 14px 0 6px;
+  border-top: 1px dotted var(--rule);
+}
+.specLine { display: contents; }
+.specLine + .specLine .specKey,
+.specLine + .specLine .specVal {
+  border-top: 1px dotted var(--rule);
+}
+.specKey {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3);
+  padding: 12px 0;
+}
+.specVal {
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; color: var(--ink); line-height: 1.4;
+  padding: 12px 0;
+}
+.specVal em { font-style: italic; color: var(--ink-2); }
+
+/* ── Compose bar ─────────────────────────────────────────────────────────── */
+.composeBar {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--rule-2);
+  background: color-mix(in oklab, var(--ink) 3%, transparent);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+:where([data-world="print"]) .composeBar {
+  background: color-mix(in oklab, #fff 8%, transparent);
+}
+/* Quiet stamp: state in mono cap. Replaces the old prose status — the
+ * dirty/saved bit is conveyed by the trailing token only. */
+.composeStamp {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+}
+.composeStampDirty {
+  color: var(--ember);
+  letter-spacing: 0.18em;
+}
+.composeActions { display: flex; align-items: center; gap: 14px; }
+/* Compose-bar buttons. Doubled selectors to clear the global
+ * `.leitmotif-world button { font: inherit; ... }` reset, which would
+ * otherwise force serif italic onto these mono-cap labels and strip
+ * their colour/background/border. */
+.btnSave.btnSave {
+  font-family: var(--sans); font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500;
+  color: var(--ink-2);
+  background: none; border: 0;
+  border-bottom: 1px solid var(--rule-2);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.btnSave.btnSave:hover { color: var(--ember); border-bottom-color: var(--ember); }
+.btnSave.btnSave:disabled { cursor: not-allowed; opacity: 0.5; }
+.btnGenerate.btnGenerate {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--sans); font-size: 12px;
+  letter-spacing: 0.22em; text-transform: uppercase; font-weight: 500;
+  color: var(--bg); background: var(--ember);
+  border: 0;
+  padding: 14px 22px;
+  cursor: pointer;
+  transition: background .2s ease;
+}
+.btnGenerate.btnGenerate:hover { background: var(--ink); }
+.btnGenerateMark { font-size: 14px; }
+/* Doubled on itself so it works regardless of the partner class — used
+ * with both .btnGenerate (compose bar) and .btnApprove (empty result). */
+.btnGenerateOff.btnGenerateOff {
+  color: var(--ink-3); background: transparent;
+  border: 1px solid var(--rule-2);
+  cursor: not-allowed;
+}
+.btnGenerateOff.btnGenerateOff:hover { background: transparent; }
+
+@media (max-width: 720px) {
+  .composeBar { grid-template-columns: 1fr; }
+  .composeActions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* ── Result column — the mock cue ────────────────────────────────────────── */
+.result {
+  position: sticky; top: 24px;
+  border: 1px solid var(--rule);
+  background: var(--bg-2);
+  padding: 0;
+  margin-bottom: 24px;
+}
+:where([data-world="print"]) .result {
+  background: color-mix(in oklab, #fff 12%, transparent);
+  box-shadow:
+    0 1px 0 var(--rule),
+    0 12px 24px -18px rgba(20, 17, 13, 0.4);
+}
+.resultHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.resultEyebrow {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ember);
+}
+.resultTitle {
+  margin: 0;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 22px; color: var(--ink); line-height: 1.1;
+}
+.resultVersion {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.16em; color: var(--ink-3);
+}
+.resultVersion em { color: var(--ink); font-style: normal; }
+.resultBody { padding: 22px 20px 22px; }
+
+/* waveform */
+.wave {
+  background: var(--bg-3);
+  border: 1px solid var(--rule);
+  padding: 18px 16px 12px;
+}
+:where([data-world="print"]) .wave {
+  background: color-mix(in oklab, var(--ink) 10%, transparent);
+  border-color: var(--rule-2);
+}
+.waveStrip {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1px;
+  height: 86px;
+  cursor: pointer;
+}
+.waveStrip i {
+  display: block; width: 2px;
+  background: var(--ink-4);
+  font-style: normal;
+  flex: 1;
+  min-width: 2px;
+}
+.waveStrip i.played { background: var(--ember); }
+.waveRail {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.1em; color: var(--ink-3);
+}
+.waveRailL { display: flex; align-items: center; gap: 12px; }
+.wavePlay.wavePlay {
+  width: 32px; height: 32px;
+  border: 1px solid var(--ember); color: var(--ember);
+  background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wavePlay.wavePlay:hover { background: var(--ember); color: var(--bg); }
+.wavePlay.wavePlay:disabled {
+  border-color: var(--ink-4);
+  color: var(--ink-4);
+  cursor: not-allowed;
+  background: transparent;
+}
+.wavePlay.wavePlay:disabled:hover { background: transparent; color: var(--ink-4); }
+.waveNow em { font-style: normal; color: var(--ink-2); margin-left: 4px; }
+
+/* result actions */
+.resultActions {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 22px;
+}
+.btnApprove.btnApprove {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 14px;
+  width: 100%;
+  padding: 18px 20px;
+  background: var(--ink); color: var(--bg);
+  border: 0;
+  font-family: var(--sans); font-size: 12px;
+  letter-spacing: 0.22em; text-transform: uppercase; font-weight: 600;
+  cursor: pointer;
+  transition: background .2s ease;
+  text-align: left;
+}
+.btnApprove.btnApprove:hover { background: var(--ember); }
+.btnApprove.btnApprove:disabled { cursor: not-allowed; opacity: 0.6; }
+.btnApproveMark { font-size: 16px; color: var(--ember); }
+.btnApprove.btnApprove:hover .btnApproveMark { color: var(--bg); }
+.btnApproveArrow {
+  font-family: var(--serif); font-style: italic; font-size: 24px;
+  text-transform: none; letter-spacing: 0;
+}
+.btnQuiet.btnQuiet {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%;
+  padding: 12px 20px;
+  text-align: left;
+  background: transparent;
+  border: 1px dashed var(--rule-2);
+  font-family: var(--sans); font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease;
+}
+.btnQuiet em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-3);
+}
+.btnQuiet.btnQuiet:hover { border-color: var(--ember); color: var(--ember); }
+.btnQuiet.btnQuiet:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* version stack */
+.versions {
+  margin-top: 28px;
+  border-top: 1px dotted var(--rule);
+  padding-top: 16px;
+}
+.versionsCap {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: 12px;
+}
+.versionsList { list-style: none; margin: 0; padding: 0; }
+.versionLi {
+  display: grid;
+  /* num · label · time · delete · play */
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.versionLi:last-child { border-bottom: 0; }
+.versionNum {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; color: var(--ink-3);
+  border: 1px solid var(--rule-2); padding: 3px 5px 2px;
+}
+.versionLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; color: var(--ink-2);
+  display: flex; flex-direction: column;
+}
+.versionLabel em {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+  color: var(--ink-3); font-style: normal;
+}
+.versionTime {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+}
+.versionPlay.versionPlay {
+  width: 24px; height: 24px;
+  border: 1px solid var(--rule-2); color: var(--ink-2);
+  background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+.versionPlay.versionPlay:hover { border-color: var(--ember); color: var(--ember); }
+
+/* Per-row delete affordance. Faded in default state, brightens when the
+ * row is hovered, flips to pencil-red on confirm. Two-step semantics:
+ * first click toggles to "delete?" text; second click within 3s
+ * actually deletes. */
+.versionDelete.versionDelete {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-4);
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, color .15s ease;
+}
+.versionLi:hover .versionDelete.versionDelete,
+.versionDelete.versionDelete:focus-visible,
+.versionDeleteConfirming.versionDeleteConfirming {
+  opacity: 1;
+}
+.versionDelete.versionDelete:hover { color: var(--ink-2); }
+.versionDeleteConfirming.versionDeleteConfirming,
+.versionDeleteConfirming.versionDeleteConfirming:hover {
+  color: var(--pencil);
+}
+.versionDelete.versionDelete:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Quiet text-link delete in the main result actions. Same vocabulary
+ * as the dispatch slip's Withdraw — mono cap, ink-3 default, ember
+ * (or pencil red on confirm) on hover. */
+.deleteCueLink.deleteCueLink {
+  align-self: flex-end;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted transparent;
+  padding: 4px 0;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color .15s ease, border-bottom-color .15s ease;
+}
+.deleteCueLink.deleteCueLink:hover {
+  color: var(--pencil);
+  border-bottom-color: var(--pencil);
+}
+.deleteCueLinkConfirming.deleteCueLinkConfirming,
+.deleteCueLinkConfirming.deleteCueLinkConfirming:hover {
+  color: var(--pencil);
+  border-bottom-color: var(--pencil);
+}
+.deleteCueLink.deleteCueLink:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* result · empty */
+.resultEmpty {
+  background: var(--bg);
+  border-style: dashed;
+}
+.resultEmptyArt {
+  text-align: center;
+  font-family: var(--serif); font-style: italic;
+  font-size: 64px; color: var(--ink-3);
+  line-height: 1;
+  padding: 12px 0 4px;
+}
+.resultEmptyTitle {
+  margin: 12px 0 8px;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 24px; color: var(--ink); text-align: center;
+}
+.resultEmptySub {
+  margin: 0 auto 20px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; line-height: 1.5; color: var(--ink-3);
+  max-width: 38ch; text-align: center;
+}
+.resultEmptyAttr {
+  margin: 12px 0 0; text-align: center;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* result · generating */
+.resultGen { background: var(--bg-2); }
+.genBody { padding: 30px 26px; text-align: center; }
+.leader {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px;
+  border: 1px solid var(--ember); border-radius: 50%;
+  font-family: var(--serif); font-style: italic;
+  font-size: 32px; color: var(--ember);
+  position: relative;
+  animation: cespin 2.6s linear infinite;
+}
+.leader::after {
+  content: "";
+  position: absolute; inset: 5px;
+  border: 1px dotted var(--ember); border-radius: 50%;
+  opacity: 0.6;
+}
+@keyframes cespin { to { transform: rotate(360deg); } }
+.genTitle {
+  margin: 16px 0 6px;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 26px; color: var(--ink);
+}
+.genSub {
+  margin: 0 auto 22px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; line-height: 1.5; color: var(--ink-3);
+  max-width: 40ch;
+}
+.genStages { list-style: none; margin: 0; padding: 0; text-align: left; }
+.genStage {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.genStageMark {
+  font-family: var(--mono); font-size: 13px; color: var(--ink-3); line-height: 1;
+}
+.genStageLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; color: var(--ink-2);
+}
+.genStageTime {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.06em; color: var(--ink-4);
+}
+.genStageDone .genStageMark { color: var(--ember); }
+.genStageDone .genStageLabel { color: var(--ink-3); }
+.genStageNow  .genStageMark  { color: var(--ember); animation: cepulse 1.6s ease-in-out infinite; }
+.genStageNow  .genStageLabel { color: var(--ink); }
+.genStageNow  .genStageTime  { color: var(--ember); }
+.genProgress {
+  margin-top: 22px;
+  height: 2px; background: var(--rule);
+  position: relative; overflow: hidden;
+}
+.genProgressFill {
+  position: absolute; left: -30%; top: 0; width: 30%; height: 2px;
+  background: var(--ember);
+  animation: ceslide 2.4s ease-in-out infinite;
+}
+@keyframes ceslide {
+  0%   { left: -30%; }
+  60%  { left: 100%; }
+  100% { left: 100%; }
+}
+.genFoot {
+  margin-top: 14px;
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+}
+.genFoot button {
+  background: none; border: 0;
+  font: inherit; color: var(--ink-2);
+  border-bottom: 1px dotted var(--rule-2);
+  cursor: pointer;
+  padding: 0;
+}
+.genFoot button:hover { color: var(--ember); border-bottom-color: var(--ember); }
+
+/* ── Result · approved (the dispatch slip) ───────────────────────────────────
+ * Quiet receipt, not a stamp. A 2px ember left-rule is the entire ornament.
+ * The brief URL is hidden inside the Copy / Open actions — never shown
+ * verbatim, since a 36-char id reads as noise no matter how it's set. */
+.dispatch {
+  position: relative;
+  padding: 18px 20px 18px 24px;
+  margin-bottom: 22px;
+  background: color-mix(in oklab, var(--ember) 4%, transparent);
+}
+.dispatch::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--ember);
+}
+.dispatchHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.dispatchEyebrow {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ember);
+}
+.dispatchDate {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.16em; color: var(--ink-3);
+}
+.dispatchBody {
+  margin: 0 0 18px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; line-height: 1.5; color: var(--ink-2);
+  max-width: 56ch;
+}
+.dispatchBody em {
+  color: var(--ink); font-style: italic;
+}
+.dispatchActions {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.dispatchActionsL {
+  display: flex; align-items: baseline; gap: 28px;
+  flex-wrap: wrap;
+}
+
+/* All three dispatch actions share one typographic vocabulary — mono cap
+ * 10px with 0.18em tracking — so they read as a single row of ledger
+ * annotations, not a primary/secondary/tertiary button hierarchy. The
+ * difference between primary (Copy / Open) and destructive (Withdraw) is
+ * carried by color and underline behavior alone:
+ *
+ *   - Copy / Open: ember with a dotted ember underline always visible.
+ *     Same convention as the page's other editorial links (.crumbBack,
+ *     .atmToggle) — "this is an active link."
+ *   - Withdraw: ink-3 with no underline by default; ember + dotted on
+ *     hover. Distinguishable as the destructive option without shouting.
+ *
+ * Both classes are doubled (.foo.foo) to override the global
+ * `.leitmotif-world button { border: 0; padding: 0; background: none }`
+ * reset, which otherwise silently wipes the underline, padding, and any
+ * background on the <button> elements. Anchors don't need it for those
+ * properties but get it too for consistency. */
+.dispatchBtn.dispatchBtn,
+.dispatchWithdraw.dispatchWithdraw {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  background: transparent;
+  border: 0;
+  padding: 2px 0 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color .15s ease, border-bottom-color .15s ease;
+}
+.dispatchBtn.dispatchBtn {
+  color: var(--ember);
+  border-bottom: 1px dotted var(--ember);
+}
+.dispatchBtn.dispatchBtn:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.dispatchWithdraw.dispatchWithdraw {
+  color: var(--ink-3);
+  border-bottom: 1px dotted transparent;
+}
+.dispatchWithdraw.dispatchWithdraw:hover {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+.dispatchWithdraw.dispatchWithdraw:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Delivery footer ─────────────────────────────────────────────────────── */
+.delivery {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  padding: 18px 40px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3); background: var(--bg);
+}
+.deliveryL {
+  font-family: var(--serif); font-style: italic;
+  text-transform: none; letter-spacing: 0; font-size: 13px;
+  color: var(--ink-3);
+}
+.deliveryL em { color: var(--ember); font-style: italic; }
+.deliveryC {
+  text-align: center;
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; text-transform: none; letter-spacing: 0;
+  color: var(--ink-2);
+}
+.deliveryR { text-align: right; }
+.deliveryR em { color: var(--ink); font-style: normal; }
+
+@media (max-width: 720px) {
+  .delivery { grid-template-columns: 1fr; gap: 8px; padding: 16px 24px; }
+  .deliveryR { text-align: left; }
+}

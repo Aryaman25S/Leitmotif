@@ -1,0 +1,765 @@
+/*
+ * New project — "Order of Production." The title page of a binder.
+ *
+ * Tokens come from the global world system on .leitmotif-world (theater =
+ * dark; print = sepia/light); grain + vignette are painted globally on the
+ * world surface so they're not redeclared here. Class names mirror the
+ * Claude Design HTML one-for-one (titlepage, format, fmt, optional, field,
+ * roster-sec, roster-row, roster-add, commit, …) so a side-by-side diff
+ * against
+ * /tmp/leitmotif-new-project-design/leitmotif/project/Leitmotif New Project.html
+ * stays legible. Buttons and anchors that need to win the
+ * `.leitmotif-world button {}` and `.leitmotif-world a {}` resets in
+ * app/globals.css are doubled (.foo.foo) per project convention.
+ */
+
+/* ─── Page shell ─────────────────────────────────────────── */
+.page {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 56px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Crumb back to projects list */
+.crumbBack.crumbBack {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px dotted var(--rule-2);
+  padding-bottom: 2px;
+  transition: color .2s ease, border-color .2s ease;
+}
+.crumbBack.crumbBack:hover { color: var(--ember); border-color: var(--ember); }
+.crumbArrow {
+  font-family: var(--serif); font-style: italic; font-size: 14px;
+  color: var(--ember); display: inline-block; transition: transform .2s ease;
+}
+.crumbBack.crumbBack:hover .crumbArrow { transform: translateX(-3px); }
+
+/* ─── Title page (the ceremony) ──────────────────────────── */
+.titlepage {
+  margin: 60px 0 0;
+  padding: 0 0 12px;
+  position: relative;
+}
+
+/* Pre-titles: a quiet stage above the title */
+.tpRuleTop {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 36px;
+}
+.tpRuleTop > :first-child,
+.tpRuleTop > :last-child {
+  height: 1px; background: var(--rule-2);
+}
+.tpRuleTopC {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.36em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
+}
+.tpRuleTopC .orn {
+  display: inline-block;
+  width: 4px; height: 4px;
+  background: var(--ember); border-radius: 50%;
+  margin: 0 14px 2px; vertical-align: middle;
+}
+.tpRuleTopPending { color: var(--ember); }
+
+/* Pre-credit line */
+.tpPre {
+  text-align: center;
+  font-family: var(--serif); font-style: italic;
+  font-size: 19px; color: var(--ink-2);
+  letter-spacing: 0.005em;
+  margin: 0 auto 22px;
+  max-width: 36ch;
+}
+.tpPre em { font-style: normal; color: var(--ink-3); }
+
+/* The title field — ENORMOUS, the only thing on the page that matters yet */
+.tpTitleWrap {
+  position: relative;
+  text-align: center;
+  padding: 18px 0 28px;
+}
+.tpTitleWrap::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -2px;
+  transform: translateX(-50%);
+  width: 56px; height: 1px;
+  background: var(--ember);
+}
+.tpTitle.tpTitle {
+  width: 100%;
+  background: transparent;
+  border: 0; outline: none;
+  text-align: center;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(54px, 7.5vw, 104px);
+  line-height: 1;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  caret-color: var(--ember);
+  padding: 12px 12px 8px;
+  display: block;
+}
+.tpTitle.tpTitle::placeholder {
+  color: var(--ink-4);
+  font-style: italic;
+  font-weight: 300;
+  opacity: 1;
+}
+.tpTitleRule {
+  display: block;
+  width: min(72%, 720px);
+  height: 1px;
+  background: var(--rule-2);
+  margin: 6px auto 0;
+}
+.tpTitleTip {
+  display: block;
+  margin: 14px auto 0;
+  text-align: center;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tpTitleTip .req { color: var(--ember); margin-left: 6px; }
+.req { color: var(--ember); margin-left: 6px; }
+
+/* Working-title chip — appears once title gets long enough to clip */
+.tpAka {
+  position: absolute;
+  right: 0; top: 12px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: baseline; gap: 8px;
+  border-left: 1px dotted var(--rule-2);
+  padding-left: 14px;
+}
+.tpAka em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; text-transform: none; letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+/* Credits row beneath the title — a film poster's lower line */
+.tpCredit {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: 18px;
+  padding-top: 10px;
+}
+.tpCreditL, .tpCreditR {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tpCreditL em, .tpCreditR em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 15px; letter-spacing: 0; text-transform: none;
+  color: var(--ink); margin-left: 8px;
+}
+.tpCreditR { text-align: right; }
+.tpCreditC {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.tpCreditC .orn {
+  display: inline-block; width: 3px; height: 3px;
+  background: var(--ember); border-radius: 50%;
+  margin: 0 10px 3px; vertical-align: middle;
+}
+
+/* ─── §I Format selector — the second-most-important thing ─── */
+.format {
+  margin: 56px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--rule);
+}
+.formatHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+.formatNum {
+  font-family: var(--serif);
+  font-style: italic; font-weight: 500;
+  font-size: 24px; line-height: 1;
+  color: var(--ember);
+}
+.formatTag {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.formatTag em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); margin-left: 12px;
+}
+.formatReq {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ember);
+}
+
+.formatRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--rule-2);
+  border-bottom: 1px solid var(--rule-2);
+}
+.fmt.fmt {
+  position: relative;
+  padding: 22px 18px 22px;
+  text-align: left;
+  cursor: pointer;
+  border-right: 1px dotted var(--rule);
+  display: flex; flex-direction: column; gap: 6px;
+  background: transparent;
+  transition: background .25s ease, color .25s ease;
+}
+.fmt.fmt:last-child { border-right: 0; }
+.fmtNum {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: baseline; gap: 8px;
+}
+.fmtDot {
+  display: inline-block;
+  width: 6px; height: 6px; border-radius: 50%;
+  border: 1px solid var(--ink-3);
+  background: transparent;
+  transition: background .2s ease, border-color .2s ease;
+}
+.fmtName {
+  font-family: var(--serif); font-style: italic;
+  font-weight: 400;
+  font-size: 24px; line-height: 1.05;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.fmtSub {
+  font-family: var(--serif); font-style: italic;
+  font-size: 13.5px; line-height: 1.4;
+  color: var(--ink-3);
+  max-width: 24ch;
+}
+.fmt.fmt:hover { background: var(--bg-2); }
+.fmt.fmt:hover .fmtNum .fmtDot { border-color: var(--ember); }
+.fmt.isOn {
+  background: var(--bg-2);
+}
+.fmt.isOn .fmtNum { color: var(--ember); }
+.fmt.isOn .fmtNum .fmtDot { background: var(--ember); border-color: var(--ember); }
+.fmt.isOn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -1px;
+  height: 2px; background: var(--ember);
+}
+[data-world="print"] .fmt.fmt:hover { background: var(--bg-3); }
+[data-world="print"] .fmt.isOn { background: var(--bg-3); }
+
+/* ─── §II Optional fields block ──────────────────────────── */
+.optional {
+  margin: 48px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--rule);
+}
+.optHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 22px;
+  margin-bottom: 14px;
+}
+.optNum {
+  font-family: var(--serif);
+  font-style: italic; font-weight: 500;
+  font-size: 24px; line-height: 1;
+  color: var(--ember);
+}
+.optTag {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.optTag em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); margin-left: 12px;
+}
+.optAside {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: baseline;
+  gap: 20px;
+  padding: 16px 0 12px;
+  border-bottom: 1px dotted var(--rule);
+}
+.field:first-of-type { border-top: 1px dotted var(--rule); }
+.fieldLabel {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 4px;
+}
+.fieldInput.fieldInput {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 4px 0 6px;
+  font-family: var(--serif);
+  font-style: italic; font-weight: 400;
+  font-size: 22px; line-height: 1.2;
+  color: var(--ink);
+  letter-spacing: 0.005em;
+  caret-color: var(--ember);
+}
+.fieldInput.fieldInput::placeholder { color: var(--ink-4); font-style: italic; opacity: 1; }
+.fieldInput.fieldInput.mono {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.fieldInput.fieldInput.mono::placeholder {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  color: var(--ink-4);
+}
+.fieldAside {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+  padding-bottom: 6px;
+}
+
+.unitRow {
+  display: inline-flex; align-items: baseline; gap: 12px;
+  width: 100%;
+}
+.unitRow .fieldInput { width: auto; flex: 0 0 110px; }
+.unit {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink-3);
+}
+.runtimeHint {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.14em; color: var(--ink-4);
+  text-transform: uppercase;
+}
+
+/* Quiet selector (engine) */
+.quietSelect {
+  display: inline-flex; align-items: baseline; gap: 0;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.quietSelect .opt.opt {
+  font: inherit;
+  color: inherit;
+  background: none;
+  padding: 6px 14px 6px 0;
+  cursor: pointer;
+  border: 0;
+  border-bottom: 1px dotted var(--rule);
+  transition: color .2s ease, border-color .2s ease;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+.quietSelect .opt.opt + .opt { padding-left: 14px; }
+.quietSelect .opt.opt:not(:last-child) { border-right: 1px dotted var(--rule); }
+.quietSelect .opt.isOn {
+  color: var(--ink);
+  border-bottom-color: var(--ember);
+}
+.quietSelect .opt.opt:hover { color: var(--ember); }
+
+.quietEngineNote {
+  margin: 8px 0 0;
+  padding-left: 180px;
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-3); max-width: 64ch;
+}
+.quietEngineNote em { color: var(--ink-2); font-style: italic; }
+
+/* ─── §III Roster (collaborators) ────────────────────────── */
+.rosterSec {
+  margin: 56px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--rule);
+}
+.rosterHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 22px;
+  margin-bottom: 18px;
+}
+.rosterNum {
+  font-family: var(--serif);
+  font-style: italic; font-weight: 500;
+  font-size: 24px; line-height: 1;
+  color: var(--ember);
+}
+.rosterTag {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.rosterTag em {
+  font-family: var(--serif); font-style: italic;
+  font-size: 16px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); margin-left: 12px;
+}
+.rosterAside {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.rosterList {
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+}
+.rosterCap {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 2.4fr) minmax(0, 1.4fr) 80px;
+  gap: 18px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.rosterRow {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 2.4fr) minmax(0, 1.4fr) 80px;
+  gap: 18px;
+  padding: 16px 0 14px;
+  border-bottom: 1px dotted var(--rule);
+  align-items: baseline;
+}
+.rosterRow:last-child { border-bottom: 0; }
+.rosterNo {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  text-align: right; padding-top: 2px;
+}
+.rosterName {
+  font-family: var(--serif); font-style: italic;
+  font-size: 21px; line-height: 1.1; color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.you {
+  font-family: var(--mono); font-style: normal;
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ember);
+  margin-left: 8px; vertical-align: middle;
+}
+.rosterEmail {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.04em; color: var(--ink-3);
+  text-transform: lowercase;
+  margin-top: 4px;
+  display: block;
+  word-break: break-all;
+}
+.rosterRole {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--ink-2);
+  padding-top: 2px;
+}
+.signed {
+  display: block;
+  font-family: var(--mono); font-style: normal;
+  font-size: 9px; letter-spacing: 0.20em;
+  text-transform: uppercase; color: var(--ember);
+  margin-top: 4px;
+}
+.rosterAct {
+  text-align: right; padding-top: 4px;
+}
+.btnStrike.btnStrike {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); background: none; border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0 3px; cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+}
+.btnStrike.btnStrike:hover { color: var(--pencil); border-color: var(--pencil); }
+
+/* Add-a-name inline row — visible by default */
+.rosterAdd {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 2.4fr) minmax(0, 1.4fr) 80px;
+  gap: 18px;
+  padding: 16px 0 14px;
+  border-bottom: 1px dotted var(--rule);
+  align-items: baseline;
+}
+.rosterAdd:last-of-type { border-bottom: 0; }
+.rosterAddNo {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.06em; color: var(--ink-4);
+  text-align: right; padding-top: 2px;
+}
+.rosterAddCell {
+  display: flex; flex-direction: column;
+}
+.rosterAddCell .fieldInput.fieldInput {
+  font-family: var(--serif); font-style: italic;
+  font-size: 19px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 6px;
+}
+.rosterAddCell .fieldInput.fieldInput:focus { border-color: var(--ember); }
+.rosterAddCell .fieldInput.fieldInput::placeholder { color: var(--ink-4); }
+.rosterEmailInput.rosterEmailInput {
+  font-family: var(--mono); font-style: normal;
+  font-size: 12px; letter-spacing: 0.04em;
+  color: var(--ink-2); text-transform: lowercase;
+  border-bottom: 1px dotted var(--rule);
+  padding: 4px 0 4px;
+  margin-top: 6px;
+  width: 100%;
+  background: transparent;
+  border-top: 0; border-left: 0; border-right: 0;
+  outline: none;
+}
+.rosterEmailInput.rosterEmailInput::placeholder {
+  color: var(--ink-4); text-transform: lowercase; letter-spacing: 0.02em;
+}
+.rosterAddRole {
+  font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  border-bottom: 1px dotted var(--rule);
+  padding-bottom: 6px;
+}
+.rosterAddRole .opt.opt {
+  font: inherit;
+  background: none;
+  cursor: pointer;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  transition: color .2s ease, border-color .2s ease;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.rosterAddRole .opt.opt:hover { color: var(--ink-2); }
+.rosterAddRole .opt.isOn {
+  color: var(--ink);
+  border-bottom-color: var(--ember);
+}
+.rosterAddAct { text-align: right; padding-top: 6px; }
+
+.rosterFoot {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 14px 0 6px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 0;
+  gap: 22px;
+}
+.rosterFoot strong {
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 14px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); margin-right: 6px;
+}
+.addAnother.addAnother {
+  font: inherit;
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding-bottom: 2px;
+  cursor: pointer;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color .2s ease, border-color .2s ease;
+}
+.addAnother.addAnother:hover { color: var(--ember); border-color: var(--ember); }
+.glyph { color: var(--ember); margin-right: 6px; }
+
+/* Optional invite note */
+.inviteNote {
+  margin-top: 18px;
+  display: grid; grid-template-columns: 160px 1fr;
+  gap: 20px; align-items: baseline;
+}
+.inviteNote label {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--ink-3); padding-top: 6px;
+}
+.inviteNote textarea {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule);
+  outline: none;
+  resize: none;
+  padding: 4px 0 8px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px; line-height: 1.55;
+  color: var(--ink);
+}
+.inviteNote textarea::placeholder { color: var(--ink-4); }
+
+/* ─── Foot — open the production ────────────────────────── */
+.commit {
+  margin: 64px 0 0;
+  padding: 32px 0 24px;
+  border-top: 2px solid var(--ink);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 32px;
+}
+.commitL {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.commitStamp {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.punch {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--ember); border-radius: 50%;
+  margin: 0 8px 1px 0; vertical-align: middle;
+}
+.commitLine {
+  font-family: var(--serif); font-style: italic;
+  font-size: 19px; color: var(--ink-2); max-width: 56ch;
+  margin: 0;
+}
+.commitLine em { color: var(--ink); font-style: italic; }
+.commitR {
+  display: flex; align-items: center; gap: 18px;
+}
+.btnCancel.btnCancel {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3); background: none; border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0 3px;
+  cursor: pointer;
+  transition: color .2s ease;
+}
+.btnCancel.btnCancel:hover { color: var(--ink); }
+.btnOpen.btnOpen {
+  font-family: var(--sans); font-size: 12px;
+  font-weight: 500; letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--ink);
+  padding: 16px 30px;
+  border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 14px;
+  transition: background .2s ease, color .2s ease;
+}
+.btnOpen.btnOpen:hover { background: var(--ember); }
+.btnOpen.btnOpen:disabled {
+  background: var(--ink-4);
+  color: color-mix(in oklab, var(--bg) 60%, transparent);
+  cursor: not-allowed;
+}
+.arrow {
+  font-family: var(--serif); font-style: italic;
+  font-size: 18px; letter-spacing: 0;
+  text-transform: none;
+  transition: transform .2s ease;
+}
+.btnOpen.btnOpen:hover .arrow { transform: translateX(4px); }
+
+/* Foot rule */
+.formFoot {
+  margin-top: 32px;
+  padding: 20px 0 8px;
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: 24px;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.formFootC {
+  text-align: center;
+  font-family: var(--serif); font-style: italic;
+  font-size: 13px; text-transform: none; letter-spacing: 0;
+  color: var(--ink-2);
+}
+.formFoot > :last-child { text-align: right; }
+
+/* ── responsive ─────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .page { padding: 22px 28px 60px; }
+  .formatRow { grid-template-columns: repeat(2, 1fr); }
+  .fmt.fmt { border-bottom: 1px dotted var(--rule); }
+  .fmt.fmt:nth-child(2n) { border-right: 0; }
+  .field { grid-template-columns: 1fr; gap: 6px; }
+  .fieldAside { display: none; }
+  .quietEngineNote { padding-left: 0; }
+  .inviteNote { grid-template-columns: 1fr; }
+  .rosterCap, .rosterRow, .rosterAdd { grid-template-columns: 28px 1fr; }
+  .rosterCap > :nth-child(3),
+  .rosterCap > :nth-child(4),
+  .rosterRow > :nth-child(3),
+  .rosterRow > :nth-child(4),
+  .rosterAdd > :nth-child(3),
+  .rosterAdd > :nth-child(4) { grid-column: 2; padding-left: 0; }
+  .commit { grid-template-columns: 1fr; align-items: start; }
+  .tpAka { display: none; }
+}
+
+@media print {
+  .crumbBack, .commit, .formFoot { display: none; }
+  .page { padding: 0; max-width: 100%; }
+  .rosterAdd { display: none; }
+}

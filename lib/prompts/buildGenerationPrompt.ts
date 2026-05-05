@@ -53,6 +53,10 @@ const HANDOFF_MODEL_PHRASES: Record<string, string> = {
   no_music: 'intentional absence of score — silence as choice',
 }
 
+// TODO(settings-redesign): these fields are consumed by the prompt compiler
+// but are no longer user-editable after the Form 7B settings redesign. The
+// project ships with whatever values are in the DB; new projects get schema
+// defaults. A new edit surface needs to be designed — known regression.
 export interface GlobalSettings {
   instrumentationFamilies: string[]
   eraReference: string | null

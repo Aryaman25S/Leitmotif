@@ -1,7 +1,7 @@
+// Auth route group is a pass-through — each page brings its own chrome
+// (the ticket route fills the viewport itself; recover renders a centered
+// card directly).
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
-      <div className="w-full max-w-sm">{children}</div>
-    </div>
-  )
+  return <>{children}</>
 }

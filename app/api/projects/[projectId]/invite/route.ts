@@ -20,13 +20,14 @@ export async function POST(
   const user = await requireApiSession(req)
   if (user instanceof NextResponse) return user
 
-  const { email, role } = await req.json()
+  const { email, role, note } = await req.json()
   if (!email || !role) {
     return NextResponse.json({ error: 'email and role required' }, { status: 400 })
   }
   if (!isValidProjectRole(role)) {
     return NextResponse.json({ error: `Invalid role: ${role}` }, { status: 400 })
   }
+  const trimmedNote = typeof note === 'string' ? note.trim().slice(0, 800) : null
 
   const denied = await assertProjectAccess(user, projectId)
   if (denied) return denied
@@ -74,6 +75,7 @@ export async function POST(
         inviterEmail: user.email,
         inviteUrl,
         roleLabel: formatRoleLabel(role),
+        note: trimmedNote,
       })
       if (send.ok) {
         emailSent = true

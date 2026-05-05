@@ -1,10 +1,5 @@
-import AppNav from '@/components/layout/AppNav'
-
+// Pass-through layout. The page renders its own LeitmotifWorld + masthead
+// to match the production binder pattern (see app/(app)/projects/[projectId]).
 export default function NewProjectLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen flex flex-col">
-      <AppNav />
-      <main className="flex-1">{children}</main>
-    </div>
-  )
+  return <>{children}</>
 }

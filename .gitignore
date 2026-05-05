@@ -52,3 +52,6 @@ scripts/out-test-stable-audio.wav
 # AI agent config
 AGENTS.md
 CLAUDE.md
+
+# Local-only handoff log (one per Claude implementation chat)
+ui-revamp.md

@@ -26,11 +26,29 @@ export interface Project {
   title: string
   format: string
   tone_brief: string | null
+  runtime_minutes: number | null
+  slate: string | null
   owner_id: string
   created_at: string
   updated_at: string
 }
 
+export interface Reel {
+  id: string
+  project_id: string
+  name: string
+  cue_position: number
+  created_at: string
+  updated_at: string
+}
+
+// TODO(settings-redesign): the project-settings redesign (Form 7B) drops the
+// edit surface for instrumentation_families, era_reference, budget_reality,
+// do_not_generate, and tone_brief on Project. These fields are still consumed
+// by the prompt compiler (lib/prompts/buildGenerationPrompt.ts) — whatever is
+// in the DB at strike time is what the generator sees. New projects fall back
+// to schema defaults. A new edit surface needs to be designed and built; this
+// is a known regression to address in a follow-on design pass.
 export interface GenerationSettings {
   id: string
   project_id: string
@@ -58,6 +76,7 @@ export interface ProjectMember {
 export interface SceneCard {
   id: string
   project_id: string
+  reel_id: string
   cue_number: string | null
   label: string
   sort_order: number
@@ -67,6 +86,7 @@ export interface SceneCard {
   video_file_key: string | null
   video_duration_sec: number | null
   status: string
+  director_note: string | null
   created_at: string
   created_by: string | null
 }
@@ -137,6 +157,8 @@ export interface MockCue {
   composer_acknowledged: boolean
   composer_acknowledged_at: string | null
   composer_notes: string | null
+  scored_at: string | null
+  scored_by: string | null
   created_at: string
 }
 
@@ -192,6 +214,8 @@ export async function getProjectsForProfile(profileId: string): Promise<Project[
     created_at: isoRequired(p.created_at),
     updated_at: isoRequired(p.updated_at),
     tone_brief: p.tone_brief ?? null,
+    runtime_minutes: p.runtime_minutes ?? null,
+    slate: p.slate ?? null,
   }))
 }
 
@@ -229,6 +253,8 @@ export async function getProjectsWithRoleForProfile(profileId: string): Promise<
     created_at: isoRequired(p.created_at),
     updated_at: isoRequired(p.updated_at),
     tone_brief: p.tone_brief ?? null,
+    runtime_minutes: p.runtime_minutes ?? null,
+    slate: p.slate ?? null,
     viewerRole: p.owner_id === profileId
       ? 'owner'
       : p.project_members[0]?.role_on_project ?? 'viewer',
@@ -349,6 +375,8 @@ export async function getProjectsListForProfile(profileId: string): Promise<Proj
       title: p.title,
       format: p.format,
       tone_brief: p.tone_brief ?? null,
+      runtime_minutes: p.runtime_minutes ?? null,
+      slate: p.slate ?? null,
       owner_id: p.owner_id,
       created_at: isoRequired(p.created_at),
       updated_at: isoRequired(p.updated_at),
@@ -432,25 +460,67 @@ export async function getProject(id: string): Promise<Project | undefined> {
     created_at: isoRequired(p.created_at),
     updated_at: isoRequired(p.updated_at),
     tone_brief: p.tone_brief ?? null,
+    runtime_minutes: p.runtime_minutes ?? null,
+    slate: p.slate ?? null,
   }
+}
+
+/** Project + the owner profile's display fields. The binder page needs the
+ *  owner shown in the "In the room" panel even though the owner isn't a
+ *  ProjectMember row. */
+export async function getProjectWithOwner(
+  id: string
+): Promise<{ project: Project; owner: { name: string | null; email: string } | null } | undefined> {
+  const p = await prisma.project.findUnique({
+    where: { id },
+    include: { owner: { select: { name: true, email: true } } },
+  })
+  if (!p) return undefined
+  const { owner: ownerRow, ...rest } = p
+  const project: Project = {
+    ...rest,
+    created_at: isoRequired(rest.created_at),
+    updated_at: isoRequired(rest.updated_at),
+    tone_brief: rest.tone_brief ?? null,
+    runtime_minutes: rest.runtime_minutes ?? null,
+    slate: rest.slate ?? null,
+  }
+  return { project, owner: ownerRow ?? null }
 }
 
 export async function createProject(
   data: Omit<Project, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Project> {
-  const p = await prisma.project.create({
-    data: {
-      title: data.title,
-      format: data.format,
-      tone_brief: data.tone_brief,
-      owner_id: data.owner_id,
-    },
+  // Every new project ships with a default "Reel 1" so the binder UI never
+  // sees a project without at least one reel. Add-reel/move-scene affordances
+  // grow from here, but a project is never reel-less.
+  const p = await prisma.$transaction(async (tx) => {
+    const project = await tx.project.create({
+      data: {
+        title: data.title,
+        format: data.format,
+        tone_brief: data.tone_brief,
+        runtime_minutes: data.runtime_minutes ?? null,
+        slate: data.slate ?? null,
+        owner_id: data.owner_id,
+      },
+    })
+    await tx.reel.create({
+      data: {
+        project_id: project.id,
+        name: 'Reel 1',
+        cue_position: 1,
+      },
+    })
+    return project
   })
   return {
     ...p,
     created_at: isoRequired(p.created_at),
     updated_at: isoRequired(p.updated_at),
     tone_brief: p.tone_brief ?? null,
+    runtime_minutes: p.runtime_minutes ?? null,
+    slate: p.slate ?? null,
   }
 }
 
@@ -465,6 +535,8 @@ export async function updateProject(
         title: data.title,
         tone_brief: data.tone_brief,
         format: data.format,
+        runtime_minutes: data.runtime_minutes,
+        slate: data.slate,
       },
     })
     return {
@@ -472,6 +544,8 @@ export async function updateProject(
       created_at: isoRequired(p.created_at),
       updated_at: isoRequired(p.updated_at),
       tone_brief: p.tone_brief ?? null,
+      runtime_minutes: p.runtime_minutes ?? null,
+      slate: p.slate ?? null,
     }
   } catch {
     return undefined
@@ -558,6 +632,83 @@ export async function deleteProjectMember(memberId: string, projectId: string): 
   return result.count > 0
 }
 
+// ── Strike (project deletion) helpers ────────────────────────────────────────
+
+/**
+ * Counts surfaced in the §3 "Strike the production" confirmation. Mirrors the
+ * design's struck-through list 1:1 — what the user is told will be destroyed
+ * is what the route actually destroys.
+ */
+export interface StrikeManifest {
+  reels: number
+  cues: number
+  intent_versions: number
+  reference_recordings: number
+  approved_briefs: number
+  comments: number
+  members_accepted: number
+  members_pending: number
+}
+
+export async function getStrikeManifest(projectId: string): Promise<StrikeManifest> {
+  const [reels, cues, intentVersions, mockCues, approvedBriefs, comments, members] =
+    await Promise.all([
+      prisma.reel.count({ where: { project_id: projectId } }),
+      prisma.sceneCard.count({ where: { project_id: projectId } }),
+      prisma.intentVersion.count({ where: { scene_card: { project_id: projectId } } }),
+      prisma.mockCue.count({ where: { scene_card: { project_id: projectId } } }),
+      prisma.mockCue.count({
+        where: { scene_card: { project_id: projectId }, is_approved: true },
+      }),
+      prisma.comment.count({ where: { scene_card: { project_id: projectId } } }),
+      prisma.projectMember.findMany({
+        where: { project_id: projectId },
+        select: { accepted_at: true },
+      }),
+    ])
+  let accepted = 0
+  let pending = 0
+  for (const m of members) {
+    if (m.accepted_at) accepted++
+    else pending++
+  }
+  return {
+    reels,
+    cues,
+    intent_versions: intentVersions,
+    reference_recordings: mockCues,
+    approved_briefs: approvedBriefs,
+    comments,
+    members_accepted: accepted,
+    members_pending: pending,
+  }
+}
+
+/**
+ * R2/local-storage object keys owned by a project. The strike route deletes
+ * these *after* the DB cascade so the design's "reference recordings" line is
+ * an honest promise. Returned in a single round-trip for use inside a tx.
+ */
+export async function getProjectStorageKeys(projectId: string): Promise<{
+  audio: string[]
+  video: string[]
+}> {
+  const [mockCues, scenes] = await Promise.all([
+    prisma.mockCue.findMany({
+      where: { scene_card: { project_id: projectId } },
+      select: { file_key: true },
+    }),
+    prisma.sceneCard.findMany({
+      where: { project_id: projectId },
+      select: { video_file_key: true },
+    }),
+  ])
+  return {
+    audio: mockCues.map((m) => m.file_key).filter((k): k is string => Boolean(k)),
+    video: scenes.map((s) => s.video_file_key).filter((k): k is string => Boolean(k)),
+  }
+}
+
 export async function createProjectMember(
   data: Omit<ProjectMember, 'id' | 'invited_at' | 'profile'>
 ): Promise<ProjectMember> {
@@ -630,6 +781,257 @@ export async function acceptProjectInviteByToken(
   return { project_id: m.project_id }
 }
 
+// ── Project binder aggregate ──────────────────────────────────────────────────
+
+/** A scene state vocabulary derived from intent/job/cue history. Maps to the
+ *  design's per-scene language: "To be spotted", "Intent saved", "Mock generating",
+ *  "Awaiting your eye", "With composer", "In composer's hand", "Scored". */
+export type SceneState =
+  | 'spotting'
+  | 'intent'
+  | 'rendering'
+  | 'for_approval'
+  | 'delivered'
+  | 'acknowledged'
+  | 'scored'
+
+export interface BinderScene {
+  id: string
+  reel_id: string
+  cue_number: string | null
+  label: string
+  sort_order: number
+  tc_in_smpte: string | null
+  tc_out_smpte: string | null
+  duration_sec: number | null
+  director_note: string | null
+  state: SceneState
+  atmospheres: string[]
+  /** Total mock cue versions ever generated for this scene. */
+  versions: number
+  /** ISO timestamp of the most recent activity touching this scene. */
+  last_touched_at: string | null
+  /** Provider of the in-flight job, when state === 'rendering'. */
+  rendering_provider: string | null
+}
+
+export interface BinderReel {
+  id: string
+  cue_position: number
+  name: string
+  scenes: BinderScene[]
+}
+
+export interface BinderData {
+  reels: BinderReel[]
+  scenes: BinderScene[]
+  scenesByReel: Record<string, BinderScene[]>
+  /** Project-level scene counts by state, for the standing summary. */
+  standing: Record<SceneState, number>
+  /** Total minutes of music across scenes that have a duration. */
+  scoredDurationMin: number | null
+}
+
+/**
+ * Single-pass binder rollup. One read per relation, zipped in JS.
+ * Per-scene state is the highest-progress signal across:
+ *   approved cue + scored_at         → scored
+ *   approved cue + acknowledged      → acknowledged
+ *   approved cue                     → delivered
+ *   any cue, in-flight job           → rendering
+ *   any cue                          → for_approval
+ *   intent_versions but no cue       → intent
+ *   nothing                          → spotting
+ */
+export async function getProjectBinder(projectId: string): Promise<BinderData> {
+  const [reels, scenes, intents, jobs, cues] = await Promise.all([
+    prisma.reel.findMany({
+      where: { project_id: projectId },
+      orderBy: { cue_position: 'asc' },
+    }),
+    prisma.sceneCard.findMany({
+      where: { project_id: projectId },
+      orderBy: [{ reel_id: 'asc' }, { sort_order: 'asc' }],
+    }),
+    prisma.intentVersion.findMany({
+      where: { scene_card: { project_id: projectId } },
+      orderBy: { version_number: 'desc' },
+      select: {
+        scene_card_id: true,
+        version_number: true,
+        emotional_atmospheres: true,
+        created_at: true,
+      },
+    }),
+    prisma.generationJob.findMany({
+      where: { scene_card: { project_id: projectId } },
+      orderBy: { queued_at: 'desc' },
+      select: {
+        scene_card_id: true,
+        status: true,
+        model_provider: true,
+        queued_at: true,
+      },
+    }),
+    prisma.mockCue.findMany({
+      where: { scene_card: { project_id: projectId } },
+      orderBy: { version_number: 'desc' },
+      select: {
+        scene_card_id: true,
+        is_approved: true,
+        composer_acknowledged: true,
+        scored_at: true,
+        created_at: true,
+      },
+    }),
+  ])
+
+  // Latest IntentVersion per scene (intents are pre-sorted desc).
+  const latestIntent = new Map<string, (typeof intents)[number]>()
+  for (const iv of intents) if (!latestIntent.has(iv.scene_card_id)) latestIntent.set(iv.scene_card_id, iv)
+
+  // Versions count + latest cue per scene.
+  const cueCount = new Map<string, number>()
+  const latestCue = new Map<string, (typeof cues)[number]>()
+  const approvedCue = new Map<string, (typeof cues)[number]>()
+  for (const c of cues) {
+    cueCount.set(c.scene_card_id, (cueCount.get(c.scene_card_id) ?? 0) + 1)
+    if (!latestCue.has(c.scene_card_id)) latestCue.set(c.scene_card_id, c)
+    if (c.is_approved && !approvedCue.has(c.scene_card_id)) approvedCue.set(c.scene_card_id, c)
+  }
+
+  // In-flight job per scene.
+  const liveJob = new Map<string, (typeof jobs)[number]>()
+  for (const j of jobs) {
+    if (j.status === 'queued' || j.status === 'processing') {
+      if (!liveJob.has(j.scene_card_id)) liveJob.set(j.scene_card_id, j)
+    }
+  }
+  const latestJob = new Map<string, (typeof jobs)[number]>()
+  for (const j of jobs) if (!latestJob.has(j.scene_card_id)) latestJob.set(j.scene_card_id, j)
+
+  const binderScenes: BinderScene[] = scenes.map((s) => {
+    const intent = latestIntent.get(s.id)
+    const live = liveJob.get(s.id)
+    const approved = approvedCue.get(s.id)
+    const cue = latestCue.get(s.id)
+    const cueN = cueCount.get(s.id) ?? 0
+
+    let state: SceneState
+    if (approved && approved.scored_at) state = 'scored'
+    else if (approved && approved.composer_acknowledged) state = 'acknowledged'
+    else if (approved) state = 'delivered'
+    else if (live) state = 'rendering'
+    else if (cueN > 0) state = 'for_approval'
+    else if (intent) state = 'intent'
+    else state = 'spotting'
+
+    const lastJob = latestJob.get(s.id)
+    const touchTimes: number[] = []
+    if (intent) touchTimes.push(intent.created_at.getTime())
+    if (cue) touchTimes.push(cue.created_at.getTime())
+    if (lastJob) touchTimes.push(lastJob.queued_at.getTime())
+    const last = touchTimes.length ? new Date(Math.max(...touchTimes)).toISOString() : null
+
+    return {
+      id: s.id,
+      reel_id: s.reel_id,
+      cue_number: s.cue_number,
+      label: s.label,
+      sort_order: s.sort_order,
+      tc_in_smpte: s.tc_in_smpte,
+      tc_out_smpte: s.tc_out_smpte,
+      duration_sec: s.video_duration_sec,
+      director_note: s.director_note,
+      state,
+      atmospheres: intent?.emotional_atmospheres ?? [],
+      versions: cueN,
+      last_touched_at: last,
+      rendering_provider: state === 'rendering' ? live?.model_provider ?? null : null,
+    }
+  })
+
+  const scenesByReel: Record<string, BinderScene[]> = {}
+  for (const r of reels) scenesByReel[r.id] = []
+  for (const s of binderScenes) {
+    if (!scenesByReel[s.reel_id]) scenesByReel[s.reel_id] = []
+    scenesByReel[s.reel_id].push(s)
+  }
+
+  const binderReels: BinderReel[] = reels.map((r) => ({
+    id: r.id,
+    cue_position: r.cue_position,
+    name: r.name,
+    scenes: scenesByReel[r.id] ?? [],
+  }))
+
+  const standing: Record<SceneState, number> = {
+    spotting: 0, intent: 0, rendering: 0, for_approval: 0,
+    delivered: 0, acknowledged: 0, scored: 0,
+  }
+  for (const s of binderScenes) standing[s.state] += 1
+
+  let scoredMin = 0
+  let any = false
+  for (const s of binderScenes) {
+    if (s.duration_sec != null) {
+      scoredMin += s.duration_sec / 60
+      any = true
+    }
+  }
+
+  return {
+    reels: binderReels,
+    scenes: binderScenes,
+    scenesByReel,
+    standing,
+    scoredDurationMin: any ? Math.round(scoredMin) : null,
+  }
+}
+
+// ── Reels ─────────────────────────────────────────────────────────────────────
+
+export async function getReels(projectId: string): Promise<Reel[]> {
+  const rows = await prisma.reel.findMany({
+    where: { project_id: projectId },
+    orderBy: { cue_position: 'asc' },
+  })
+  return rows.map((r) => ({
+    ...r,
+    created_at: isoRequired(r.created_at),
+    updated_at: isoRequired(r.updated_at),
+  }))
+}
+
+/**
+ * Append a new reel at the next cue_position. The default name is "Reel N"
+ * to match the post-migration default; callers can pass a name through later
+ * once a rename UI exists.
+ */
+// TODO: rename-reel API + UI — pair with a PATCH /api/projects/[id]/reels/[reelId].
+export async function createReel(projectId: string, name?: string): Promise<Reel> {
+  const last = await prisma.reel.findFirst({
+    where: { project_id: projectId },
+    orderBy: { cue_position: 'desc' },
+    select: { cue_position: true },
+  })
+  const nextPosition = (last?.cue_position ?? 0) + 1
+  const r = await prisma.reel.create({
+    data: {
+      project_id: projectId,
+      name: name?.trim() || `Reel ${nextPosition}`,
+      cue_position: nextPosition,
+    },
+  })
+  return {
+    ...r,
+    created_at: isoRequired(r.created_at),
+    updated_at: isoRequired(r.updated_at),
+  }
+}
+
+// TODO: deleteReel + reorderReels — needs to handle scene reassignment.
+
 // ── Scene Cards ───────────────────────────────────────────────────────────────
 
 export async function getSceneCards(projectId: string): Promise<SceneCard[]> {
@@ -652,6 +1054,7 @@ export async function createSceneCard(
   const s = await prisma.sceneCard.create({
     data: {
       project_id: data.project_id,
+      reel_id: data.reel_id,
       cue_number: data.cue_number,
       label: data.label,
       sort_order: data.sort_order,
@@ -661,6 +1064,7 @@ export async function createSceneCard(
       video_file_key: data.video_file_key,
       video_duration_sec: data.video_duration_sec,
       status: data.status,
+      director_note: data.director_note,
       created_by: data.created_by,
     },
   })
@@ -675,6 +1079,7 @@ export async function updateSceneCard(
     const s = await prisma.sceneCard.update({
       where: { id },
       data: {
+        // TODO: scene-moves-between-reels — accept reel_id here once the move UI exists.
         cue_number: data.cue_number,
         label: data.label,
         sort_order: data.sort_order,
@@ -684,6 +1089,7 @@ export async function updateSceneCard(
         video_file_key: data.video_file_key,
         video_duration_sec: data.video_duration_sec,
         status: data.status,
+        director_note: data.director_note,
       },
     })
     return { ...s, created_at: isoRequired(s.created_at) }
@@ -851,6 +1257,7 @@ export async function getMockCues(sceneCardId: string): Promise<MockCue[]> {
     created_at: isoRequired(c.created_at),
     approved_at: iso(c.approved_at),
     composer_acknowledged_at: iso(c.composer_acknowledged_at),
+    scored_at: iso(c.scored_at),
   }))
 }
 
@@ -862,6 +1269,7 @@ export async function getMockCue(id: string): Promise<MockCue | undefined> {
     created_at: isoRequired(c.created_at),
     approved_at: iso(c.approved_at),
     composer_acknowledged_at: iso(c.composer_acknowledged_at),
+    scored_at: iso(c.scored_at),
   }
 }
 
@@ -893,6 +1301,7 @@ export async function createMockCue(
     created_at: isoRequired(c.created_at),
     approved_at: iso(c.approved_at),
     composer_acknowledged_at: iso(c.composer_acknowledged_at),
+    scored_at: iso(c.scored_at),
   }
 }
 
@@ -923,6 +1332,7 @@ export async function updateMockCue(
       created_at: isoRequired(c.created_at),
       approved_at: iso(c.approved_at),
       composer_acknowledged_at: iso(c.composer_acknowledged_at),
+      scored_at: iso(c.scored_at),
     }
   } catch {
     return undefined

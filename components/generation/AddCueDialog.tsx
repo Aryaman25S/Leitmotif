@@ -10,18 +10,31 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
-interface AddSceneDialogProps {
+interface AddCueDialogProps {
   projectId: string
+  reelId: string
+  reelDisplayName: string
   sceneCount: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export default function AddSceneDialog({ projectId, sceneCount }: AddSceneDialogProps) {
-  const [open, setOpen] = useState(false)
+/**
+ * The director's add-cue affordance, scoped to a specific reel. Triggered by
+ * the binder's "+ Add a cue to Reel N" row and the empty-state primary CTA.
+ */
+export default function AddCueDialog({
+  projectId,
+  reelId,
+  reelDisplayName,
+  sceneCount,
+  open,
+  onOpenChange,
+}: AddCueDialogProps) {
   const [label, setLabel] = useState('')
   const [cueNumber, setCueNumber] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,11 +45,12 @@ export default function AddSceneDialog({ projectId, sceneCount }: AddSceneDialog
     if (!label.trim()) return
     setLoading(true)
 
-    const res = await fetch(`/api/scenes`, {
+    const res = await fetch('/api/scenes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_id: projectId,
+        reel_id: reelId,
         label: label.trim(),
         cue_number: cueNumber.trim() || null,
         sort_order: sceneCount,
@@ -45,38 +59,33 @@ export default function AddSceneDialog({ projectId, sceneCount }: AddSceneDialog
     const data = await res.json()
 
     if (!res.ok) {
-      toast.error(data.error ?? 'Failed to create scene')
+      toast.error(data.error ?? 'Failed to create cue')
       setLoading(false)
       return
     }
 
-    toast.success('Scene card created')
-    setOpen(false)
+    toast.success('Cue added')
     setLabel('')
     setCueNumber('')
+    onOpenChange(false)
     router.push(`/projects/${projectId}/scenes/${data.scene.id}`)
     router.refresh()
     setLoading(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        className="inline-flex items-center gap-1 h-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] border border-border bg-background hover:bg-muted hover:text-foreground transition-all font-medium outline-none"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add scene
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Add scene card</DialogTitle>
+          <DialogTitle>Add a cue to {reelDisplayName}</DialogTitle>
+          <DialogDescription>Title · timecode in/out · cue number</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleCreate} className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="scene-label">Scene / cue label *</Label>
+            <Label htmlFor="cue-label">Scene / cue title *</Label>
             <Input
-              id="scene-label"
-              placeholder="e.g. Maria discovers the letter"
+              id="cue-label"
+              placeholder="e.g. Maps spread on the kitchen table"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               required
@@ -95,9 +104,9 @@ export default function AddSceneDialog({ projectId, sceneCount }: AddSceneDialog
           </div>
           <div className="flex gap-2 pt-1">
             <Button type="submit" disabled={loading || !label.trim()} className="flex-1">
-              {loading ? 'Creating…' : 'Create scene'}
+              {loading ? 'Adding…' : 'Add cue'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>

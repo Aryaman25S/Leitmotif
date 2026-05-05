@@ -6,11 +6,12 @@ import { HeroReelStatic } from './HeroReelStatic'
 
 // Lazy-load the WebGL bundle. ssr: false keeps three / R3F out of the
 // server-rendered HTML and the initial client chunk; it loads only when this
-// component decides to mount the scene. While the chunk is loading,
-// `loading:` keeps the static fallback visible — no flash of empty stage.
+// component decides to mount the scene. No `loading:` slot — during the
+// chunk fetch we show an empty stage rather than the static, so users don't
+// see the static fallback flash twice (SSR → hydration → chunk-load → scene).
 const HeroReelScene = dynamic(
   () => import('./HeroReel.scene').then((m) => m.HeroReelScene),
-  { ssr: false, loading: () => <HeroReelStatic /> },
+  { ssr: false },
 )
 
 // One-shot WebGL probe. Headless captures, very old browsers, and some
@@ -45,6 +46,16 @@ export function HeroReelClient() {
   const [inView, setInView] = useState(false)
   // null = still detecting, true/false = result.
   const [webglOk, setWebglOk] = useState<boolean | null>(null)
+  // True after the first client effect fires. Before that, we render the
+  // static for SSR + initial paint; after, we suppress the static for users
+  // whose environment will mount the WebGL scene anyway, so they don't see
+  // the SSR fallback flash before the cylinder appears.
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const mark = () => setMounted(true)
+    mark()
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -101,11 +112,26 @@ export function HeroReelClient() {
     return () => obs.disconnect()
   }, [])
 
+  // SSR + first hydrated render. Render nothing — normal users go straight
+  // from empty stage to the WebGL cylinder, never seeing the flat fallback
+  // flash. The trade-off is reduced-motion / no-WebGL users see ~80ms of
+  // empty stage before their static appears, which is fine.
+  if (!mounted) return null
+
+  // Permanent fallback for environments that won't mount the WebGL scene.
+  if (motionState === 'reduce' || webglOk === false) {
+    return <HeroReelStatic />
+  }
+
+  // Scene is going to mount — suppress the static so users don't see it
+  // flash before the cylinder appears. Empty stage (still has the backlight
+  // + grain decorations) until fonts / WebGL chunk / IO gates all pass.
   const sceneCanLoad =
     motionState === 'allow' &&
     fontsReady &&
     webglOk === true &&
     inView
-  if (!sceneCanLoad) return <HeroReelStatic />
+  if (!sceneCanLoad) return null
+
   return <HeroReelScene />
 }

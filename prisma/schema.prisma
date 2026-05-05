@@ -28,6 +28,7 @@ model Profile {
   projects            Project[]       @relation("owner")
   project_members     ProjectMember[] @relation("member_profile")
   mock_cue_approvals  MockCue[]       @relation("approver")
+  mock_cue_scored     MockCue[]       @relation("scorer")
 }
 
 // Better Auth (tables: user, session, account, verification)
@@ -95,18 +96,36 @@ model Verification {
 }
 
 model Project {
-  id         String   @id @default(uuid())
-  title      String
-  format     String   @default("feature")
-  tone_brief String?
-  owner_id   String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  format          String   @default("feature")
+  tone_brief      String?
+  runtime_minutes Int?
+  slate           String?
+  owner_id        String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   owner               Profile             @relation("owner", fields: [owner_id], references: [id])
   scene_cards         SceneCard[]
   generation_settings GenerationSettings?
   project_members     ProjectMember[]
+  reels               Reel[]
+}
+
+model Reel {
+  id           String   @id @default(uuid())
+  project_id   String
+  name         String
+  cue_position Int
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  project     Project     @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  scene_cards SceneCard[]
+
+  @@unique([project_id, cue_position])
+  @@index([project_id])
 }
 
 model GenerationSettings {
@@ -140,6 +159,7 @@ model ProjectMember {
 model SceneCard {
   id                    String   @id @default(uuid())
   project_id            String
+  reel_id               String
   cue_number            String?
   label                 String
   sort_order            Int      @default(0)
@@ -149,14 +169,18 @@ model SceneCard {
   video_file_key        String?
   video_duration_sec    Float?
   status                String   @default("untagged")
+  director_note         String?
   created_at            DateTime @default(now())
   created_by            String?
 
   project         Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  reel            Reel            @relation(fields: [reel_id], references: [id], onDelete: Cascade)
   intent_versions IntentVersion[]
   generation_jobs GenerationJob[]
   mock_cues       MockCue[]
   comments        Comment[]
+
+  @@index([reel_id])
 }
 
 model IntentVersion {
@@ -233,12 +257,15 @@ model MockCue {
   composer_acknowledged    Boolean   @default(false)
   composer_acknowledged_at DateTime?
   composer_notes           String?
+  scored_at                DateTime?
+  scored_by                String?
   created_at               DateTime  @default(now())
 
   generation_job GenerationJob @relation(fields: [generation_job_id], references: [id])
   scene_card     SceneCard     @relation(fields: [scene_card_id], references: [id], onDelete: Cascade)
   intent_version IntentVersion @relation(fields: [intent_version_id], references: [id])
   approver       Profile?      @relation("approver", fields: [approved_by], references: [id])
+  scorer         Profile?      @relation("scorer", fields: [scored_by], references: [id])
 }
 
 model Comment {

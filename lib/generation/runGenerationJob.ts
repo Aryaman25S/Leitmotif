@@ -81,6 +81,8 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
       composer_acknowledged: false,
       composer_acknowledged_at: null,
       composer_notes: null,
+      scored_at: null,
+      scored_by: null,
     })
 
     await updateJob(jobId, { status: 'completed', completed_at: now() })

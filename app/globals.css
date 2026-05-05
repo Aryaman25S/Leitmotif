@@ -465,10 +465,10 @@ body:has(.leitmotif-world) {
 [data-world="faded"] .leitmotif-world .hero .stage,
 [data-world="archive"] .leitmotif-world .hero .stage {
   background: radial-gradient(
-    ellipse 70% 55% at 50% 50%,
+    ellipse 65% 55% at 50% 50%,
     rgba(255, 200, 130, 0.19) 0%,
     rgba(255, 180, 110, 0.10) 50%,
-    rgba(140, 80, 40, 0.035) 100%
+    transparent 100%
   );
 }
 
@@ -1650,109 +1650,1238 @@ body:has(.leitmotif-world) {
   margin-top: 4px;
 }
 
-/* ── Composer brief PAGE chrome (the /brief/[id] route) ───────────────────── */
-/* Distinct from the landing's brief section: a full-page editorial document
-   with a minimal top bar, italic disclaimer, the brief artifact, the
-   composer ack island, and a small foot line. */
+/* ── Composer brief: PUBLIC ARTIFACT (the /brief/[id] route) ──────────────── */
+/* The page IS the document. Two cue-sheet modes wired to the global world
+   toggle — paper (data-world="print") for cream cue-sheet, theater
+   (data-world="theater") for warm-black booth. The landing's `.brief-section`
+   teaser keeps its simpler paper-on-dark treatment unchanged. */
 
-.leitmotif-world .brief-page {
+.leitmotif-world .brief-doc-page {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  --bd-page-bg: #1a140e;
+  --bd-sheet-bg: #100d09;
+  --bd-sheet-ink: #e8dfc9;
+  --bd-sheet-ink-2: #b8ad95;
+  --bd-sheet-ink-3: #7d735f;
+  --bd-sheet-rule: #2a241c;
+  --bd-sheet-rule-2: #3a342b;
+  --bd-sheet-accent: #c25a3a;
+  --bd-sheet-pencil: #8a2a1f;
+  --bd-sheet-well: #150f0a;
+  --bd-sheet-well-2: #1f1812;
+  --bd-grain-opacity: 0.07;
+  --bd-grain-blend: overlay;
+  background: var(--bd-page-bg);
+  color: var(--bd-sheet-ink);
 }
-.leitmotif-world .brief-page-bar {
-  border-bottom: 1px solid var(--rule);
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+[data-world="print"] .leitmotif-world .brief-doc-page,
+[data-world="faded"] .leitmotif-world .brief-doc-page {
+  --bd-page-bg: #d8cdb1;
+  --bd-sheet-bg: #f1ead6;
+  --bd-sheet-ink: #1a1612;
+  --bd-sheet-ink-2: #3a3226;
+  --bd-sheet-ink-3: #5a4f3a;
+  --bd-sheet-rule: #b8ad8e;
+  --bd-sheet-rule-2: #8c8166;
+  --bd-sheet-accent: #b8492c;
+  --bd-sheet-pencil: #8a2a1f;
+  --bd-sheet-well: #ece4cc;
+  --bd-sheet-well-2: #e3d9bc;
+  --bd-grain-opacity: 0.18;
+  --bd-grain-blend: multiply;
+}
+
+/* Sticky utility ribbon — sits above the sheet, prints away. */
+.leitmotif-world .brief-doc-utility {
   position: sticky;
   top: 0;
-  z-index: 100;
-}
-.leitmotif-world .brief-page-bar-inner {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 14px var(--gutter);
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-}
-.leitmotif-world .brief-page-bar-inner > :first-child { justify-self: start; }
-.leitmotif-world .brief-page-bar-inner > :last-child  { justify-self: end;   }
-.leitmotif-world .brief-page-bar-inner .wordmark {
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 18px;
-  letter-spacing: 0.02em;
-}
-.leitmotif-world .brief-page-bar-inner .wordmark .perf {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  background: var(--ember);
-  border-radius: 50%;
-  vertical-align: middle;
-  margin: 0 5px 3px 0;
-}
-.leitmotif-world .brief-page-label {
+  gap: 18px;
+  padding: 14px clamp(20px, 4vw, 40px);
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--bd-sheet-ink-3);
+  background: linear-gradient(180deg, var(--bd-page-bg) 0%, var(--bd-page-bg) 70%, transparent 100%);
+}
+.leitmotif-world .brief-doc-utility .file-tag {
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.leitmotif-world .brief-doc-utility .file-tag .dot {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--bd-sheet-accent);
+  border-radius: 50%;
+}
+.leitmotif-world .brief-doc-utility .actions {
+  display: flex; align-items: center; gap: 4px;
+}
+.leitmotif-world .brief-doc-utility .actions .sep {
+  width: 1px; height: 14px; background: var(--bd-sheet-rule-2); margin: 0 8px;
+}
+.leitmotif-world .brief-doc-utility button.bd-btn {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.leitmotif-world .brief-doc-utility button.bd-btn:hover {
+  color: var(--bd-sheet-ink);
+  border-color: var(--bd-sheet-rule-2);
+}
+.leitmotif-world .brief-doc-utility .toggle {
+  display: inline-flex;
+  border: 1px solid var(--bd-sheet-rule-2);
+  padding: 2px;
+  gap: 0;
+}
+.leitmotif-world .brief-doc-utility .toggle button {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  color: var(--bd-sheet-ink-3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.leitmotif-world .brief-doc-utility .toggle button[aria-pressed="true"] {
+  background: var(--bd-sheet-ink);
+  color: var(--bd-page-bg);
 }
 
-.leitmotif-world .brief-page-main {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: clamp(36px, 6vh, 64px) var(--gutter);
-  width: 100%;
+/* Stage and sheet */
+.leitmotif-world .brief-doc-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px clamp(20px, 4vw, 56px) 96px;
   flex: 1;
 }
-.leitmotif-world .brief-page-disclaimer {
+.leitmotif-world .brief-doc {
+  width: min(880px, 100%);
+  background: var(--bd-sheet-bg);
+  color: var(--bd-sheet-ink);
+  position: relative;
+  border: 1px solid var(--bd-sheet-rule);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04),
+    0 30px 80px -20px rgba(0, 0, 0, 0.55),
+    0 8px 30px -10px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono);
+  transition: background 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+.leitmotif-world .brief-doc::before {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: var(--bd-grain-blend);
+  opacity: var(--bd-grain-opacity);
+  z-index: 1;
+}
+.leitmotif-world .brief-doc > * { position: relative; z-index: 2; }
+
+/* Folio strip */
+.leitmotif-world .bd-folio {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 36px;
+  border-bottom: 1px solid var(--bd-sheet-rule);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-folio .L { text-align: left; }
+.leitmotif-world .bd-folio .C {
   font-family: var(--serif);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--ink-3);
-  text-align: center;
-  margin: 0 auto clamp(20px, 3vh, 32px);
-  max-width: 60ch;
+  font-style: italic;
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bd-sheet-ink);
 }
-.leitmotif-world .brief-page-disclaimer em { font-style: italic; }
-.leitmotif-world .brief-page-ack {
-  margin-top: clamp(24px, 4vh, 36px);
+.leitmotif-world .bd-folio .C .perf {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--bd-sheet-accent);
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 8px;
+  transform: translateY(-1px);
 }
-.leitmotif-world .brief-page-foot {
+.leitmotif-world .bd-folio .R { text-align: right; }
+
+/* Head — production / cue title / addressing */
+.leitmotif-world .bd-head {
+  padding: 36px 48px 28px;
+  border-bottom: 2px solid var(--bd-sheet-ink);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 28px;
+  align-items: end;
+}
+.leitmotif-world .bd-head .from,
+.leitmotif-world .bd-head .to {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-3);
-  text-align: center;
-  margin: clamp(40px, 6vh, 56px) 0 0;
+  color: var(--bd-sheet-ink-3);
+  line-height: 1.7;
+}
+.leitmotif-world .bd-head .from .name,
+.leitmotif-world .bd-head .to .name {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bd-sheet-ink);
+  margin-top: 2px;
+}
+.leitmotif-world .bd-head .to { text-align: right; }
+.leitmotif-world .bd-head .title-block { text-align: center; }
+.leitmotif-world .bd-head .title-block .eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-accent);
+  margin-bottom: 14px;
+}
+.leitmotif-world .bd-head .title-block h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(36px, 5.2vw, 56px);
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  color: var(--bd-sheet-ink);
+  text-wrap: balance;
+}
+.leitmotif-world .bd-head .title-block .ref {
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-head .title-block .ref .sep {
+  margin: 0 10px;
+  color: var(--bd-sheet-rule-2);
 }
 
-/* The audio scrubber sits inside .brief-wave in place of the static SVG. */
-.leitmotif-world .brief-wave-player {
-  margin: 6px 0 0;
+/* Meta strip — 5 cells */
+.leitmotif-world .bd-meta {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-bottom: 1px solid var(--bd-sheet-rule);
 }
-
-/* Negative prompt rider on .brief-prompt — keeps the same mono register as the
-   positive prompt but flags the AVOID label in pencil. */
-.leitmotif-world .brief-prompt-neg {
-  margin: 8px 0 0 !important;
-  color: var(--brief-ink-3) !important;
-}
-.leitmotif-world .brief-prompt-neg-tag {
-  font-family: var(--sans);
-  font-weight: 600;
+.leitmotif-world .bd-meta > div {
+  padding: 14px 18px;
+  border-right: 1px solid var(--bd-sheet-rule);
+  font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--brief-pencil);
+  color: var(--bd-sheet-ink-3);
+  line-height: 1.5;
+}
+.leitmotif-world .bd-meta > div:last-child { border-right: 0; }
+.leitmotif-world .bd-meta strong {
+  display: block;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--bd-sheet-ink);
+  margin-top: 4px;
+}
+
+/* Picture strip — scene frame + scene card */
+.leitmotif-world .bd-picture {
+  border-bottom: 1px solid var(--bd-sheet-rule);
+  padding: 28px 48px;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 32px;
+  align-items: stretch;
+}
+@media (max-width: 760px) {
+  .leitmotif-world .bd-picture { grid-template-columns: 1fr; gap: 22px; }
+}
+.leitmotif-world .bd-frame {
+  position: relative;
+  aspect-ratio: 2.35 / 1;
+  background: #1a1612;
+  overflow: hidden;
+  border: 1px solid var(--bd-sheet-rule-2);
+}
+[data-world="print"] .leitmotif-world .bd-frame,
+[data-world="faded"] .leitmotif-world .bd-frame {
+  background: repeating-linear-gradient(135deg, #1a1612 0 8px, #221c14 8px 16px);
+}
+.leitmotif-world .bd-frame video,
+.leitmotif-world .bd-frame img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.leitmotif-world .bd-frame .placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(232, 223, 201, 0.55);
+}
+.leitmotif-world .bd-frame .placeholder small {
+  display: block;
+  margin-top: 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: rgba(232, 223, 201, 0.35);
+}
+.leitmotif-world .bd-frame .perf-strip {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 14px;
+  background-image:
+    radial-gradient(circle at 50% 8px,   rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 24px,  rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 40px,  rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 56px,  rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 72px,  rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 88px,  rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 104px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 120px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 136px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 152px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 168px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 184px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 200px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 216px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 232px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 50% 248px, rgba(0, 0, 0, 0.95) 0 3px, transparent 3.5px);
+  background-color: #2a241c;
+  z-index: 2;
+}
+.leitmotif-world .bd-frame .perf-strip.left { left: 0; }
+.leitmotif-world .bd-frame .perf-strip.right { right: 0; }
+.leitmotif-world .bd-frame .tc-overlay {
+  position: absolute;
+  bottom: 10px; left: 24px; right: 24px;
+  display: flex; justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #e8dfc9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 2;
+}
+.leitmotif-world .bd-frame .tc-overlay .tag {
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 8px;
+  border: 1px solid rgba(232, 223, 201, 0.2);
+}
+.leitmotif-world .bd-scene-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 4px 0;
+}
+.leitmotif-world .bd-scene-card .label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  margin-bottom: 8px;
+}
+.leitmotif-world .bd-scene-card .scene {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--bd-sheet-ink);
+}
+.leitmotif-world .bd-scene-card .specs {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--bd-sheet-ink-2);
+  letter-spacing: 0.06em;
+}
+.leitmotif-world .bd-scene-card .specs span.k {
+  color: var(--bd-sheet-ink-3);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  display: inline-block;
+  width: 78px;
+}
+
+/* Body — two columns + center fold */
+.leitmotif-world .bd-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+}
+.leitmotif-world .bd-body::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent 0%, var(--bd-sheet-rule) 8%, var(--bd-sheet-rule-2) 50%, var(--bd-sheet-rule) 92%, transparent 100%);
+  transform: translateX(-0.5px);
+  z-index: 3;
+  pointer-events: none;
+}
+.leitmotif-world .bd-col { padding: 32px 40px; }
+.leitmotif-world .bd-col.left { border-right: 1px solid var(--bd-sheet-rule); }
+@media (max-width: 760px) {
+  .leitmotif-world .bd-body { grid-template-columns: 1fr; }
+  .leitmotif-world .bd-body::before { display: none; }
+  .leitmotif-world .bd-col.left {
+    border-right: 0;
+    border-bottom: 1px solid var(--bd-sheet-rule);
+  }
+}
+.leitmotif-world .bd-col h5 {
+  margin: 0 0 14px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-col h5 .num {
+  color: var(--bd-sheet-accent);
+  margin-right: 10px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.leitmotif-world .bd-col h5 + h5 { margin-top: 28px; }
+.leitmotif-world .bd-field { margin: 0 0 26px; }
+.leitmotif-world .bd-field:last-child { margin-bottom: 0; }
+
+/* Direction quote */
+.leitmotif-world .bd-direction {
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--bd-sheet-ink);
+  margin: 0 0 4px;
+  text-wrap: pretty;
+}
+.leitmotif-world .bd-direction::before {
+  content: "\201C";
+  font-family: var(--serif);
+  font-size: 48px;
+  line-height: 0;
+  color: var(--bd-sheet-accent);
+  vertical-align: -0.36em;
   margin-right: 4px;
+}
+.leitmotif-world .bd-direction::after {
+  content: "\201D";
+  font-family: var(--serif);
+  font-size: 48px;
+  line-height: 0;
+  color: var(--bd-sheet-accent);
+  vertical-align: -0.36em;
+  margin-left: 4px;
+}
+.leitmotif-world .bd-direction .attr {
+  display: block;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  margin-top: 14px;
+}
+
+/* Scene description (in body) */
+.leitmotif-world .bd-scene-prose {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.45;
+  color: var(--bd-sheet-ink);
+  margin: 0;
+}
+
+/* Tag chips */
+.leitmotif-world .bd-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  list-style: none; padding: 0; margin: 0;
+}
+.leitmotif-world .bd-tags li {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  border: 1px solid var(--bd-sheet-ink);
+  color: var(--bd-sheet-ink);
+  text-transform: uppercase;
+  background: transparent;
+}
+.leitmotif-world .bd-tags li.ember {
+  border-color: var(--bd-sheet-accent);
+  color: var(--bd-sheet-accent);
+}
+.leitmotif-world .bd-tags li.fn {
+  border-style: dashed;
+  color: var(--bd-sheet-ink-2);
+  border-color: var(--bd-sheet-ink-2);
+}
+
+/* Density / balance / diegesis as inline notations */
+.leitmotif-world .bd-notations {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--bd-sheet-ink);
+}
+.leitmotif-world .bd-notations .row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px dotted var(--bd-sheet-rule-2);
+}
+.leitmotif-world .bd-notations .row:first-child { border-top: 0; }
+.leitmotif-world .bd-notations .row .k {
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-dial {
+  display: inline-flex; align-items: center; gap: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--bd-sheet-ink-2);
+  flex-wrap: wrap;
+}
+.leitmotif-world .bd-dial .notch {
+  display: inline-block;
+  width: 22px; height: 1px;
+  background: var(--bd-sheet-rule-2);
+}
+.leitmotif-world .bd-dial .pip {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border: 1px solid var(--bd-sheet-ink-2);
+  background: transparent;
+  border-radius: 50%;
+  margin: 0 -3px;
+  position: relative;
+  z-index: 1;
+}
+.leitmotif-world .bd-dial .pip.on {
+  background: var(--bd-sheet-accent);
+  border-color: var(--bd-sheet-accent);
+  width: 9px; height: 9px;
+}
+.leitmotif-world .bd-dial .label {
+  margin-left: 12px;
+  font-size: 11.5px;
+  color: var(--bd-sheet-ink);
+}
+.leitmotif-world .bd-dial .label em {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--bd-sheet-ink-2);
+}
+
+/* Recurrence motif */
+.leitmotif-world .bd-recurrence {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--bd-sheet-ink);
+  display: flex; align-items: center; gap: 14px;
+}
+.leitmotif-world .bd-recurrence .glyph {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--bd-sheet-accent);
+}
+.leitmotif-world .bd-recurrence small {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  display: block;
+  margin-top: 2px;
+}
+
+/* Musical specification dl */
+.leitmotif-world .bd-spec {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  row-gap: 8px; column-gap: 14px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  margin: 0;
+}
+.leitmotif-world .bd-spec dt {
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  padding-top: 3px;
+}
+.leitmotif-world .bd-spec dd { margin: 0; color: var(--bd-sheet-ink); line-height: 1.55; }
+.leitmotif-world .bd-spec dd.exclude span {
+  text-decoration: line-through;
+  text-decoration-color: var(--bd-sheet-pencil);
+  text-decoration-thickness: 1.5px;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-spec dd.exclude .sep {
+  color: var(--bd-sheet-rule-2);
+  margin: 0 4px;
+  text-decoration: none;
+}
+
+/* Margin annotation */
+.leitmotif-world .bd-anno {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--bd-sheet-ink-2);
+  margin: 0;
+  border-left: 2px solid var(--bd-sheet-accent);
+  padding: 4px 0 4px 14px;
+}
+
+/* Mock cue block */
+.leitmotif-world .bd-cue-block {
+  border-top: 1px solid var(--bd-sheet-rule);
+  padding: 28px 48px;
+  background: linear-gradient(180deg, var(--bd-sheet-well) 0%, var(--bd-sheet-bg) 100%);
+}
+.leitmotif-world .bd-cue-block .cap {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  margin-bottom: 4px;
+}
+.leitmotif-world .bd-cue-block .cap .num {
+  color: var(--bd-sheet-accent);
+  margin-right: 10px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.leitmotif-world .bd-cue-block .cap em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bd-sheet-ink-2);
+}
+.leitmotif-world .bd-cue-block h3 {
+  margin: 4px 0 18px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--bd-sheet-ink);
+}
+
+/* Player */
+.leitmotif-world .bd-player {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 22px;
+  border: 1px solid var(--bd-sheet-rule);
+  background: var(--bd-sheet-well-2);
+}
+.leitmotif-world .bd-player .play {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--bd-sheet-ink);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--bd-sheet-ink);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background 160ms ease, color 160ms ease;
+}
+.leitmotif-world .bd-player .play:hover {
+  background: var(--bd-sheet-ink);
+  color: var(--bd-sheet-bg);
+}
+.leitmotif-world .bd-player .play .icon {
+  display: inline-block;
+  width: 0; height: 0;
+  border-left: 11px solid currentColor;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  margin-left: 3px;
+}
+.leitmotif-world .bd-player.playing .play .icon {
+  border: 0;
+  width: 10px; height: 12px;
+  background:
+    linear-gradient(currentColor, currentColor) left/3px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) right/3px 100% no-repeat;
+  margin-left: 0;
+}
+.leitmotif-world .bd-wave {
+  position: relative;
+  height: 56px;
+  color: var(--bd-sheet-ink-2);
+}
+.leitmotif-world .bd-wave svg { display: block; width: 100%; height: 100%; }
+.leitmotif-world .bd-wave .progress {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 0%;
+  background: var(--bd-sheet-accent);
+  mix-blend-mode: multiply;
+  opacity: 0.32;
+  transition: width 80ms linear;
+  pointer-events: none;
+}
+[data-world="theater"] .leitmotif-world .bd-wave .progress,
+[data-world="archive"] .leitmotif-world .bd-wave .progress {
+  mix-blend-mode: screen;
+  opacity: 0.45;
+}
+.leitmotif-world .bd-wave .scrub {
+  position: absolute; inset: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.leitmotif-world .bd-player .tc {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--bd-sheet-ink-2);
+  white-space: nowrap;
+}
+.leitmotif-world .bd-player .tc .now { color: var(--bd-sheet-ink); }
+.leitmotif-world .bd-player .tc .sep {
+  margin: 0 6px;
+  color: var(--bd-sheet-rule-2);
+}
+
+/* Cue foot meta + disclaimer */
+.leitmotif-world .bd-cue-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--bd-sheet-ink-3);
+  line-height: 1.7;
+}
+.leitmotif-world .bd-cue-foot .L .k,
+.leitmotif-world .bd-cue-foot .R .k {
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  display: block;
+}
+.leitmotif-world .bd-cue-foot .L .v,
+.leitmotif-world .bd-cue-foot .R .v {
+  color: var(--bd-sheet-ink);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+}
+.leitmotif-world .bd-cue-foot .R { text-align: right; }
+.leitmotif-world .bd-disclaimer {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--bd-sheet-ink-3);
+  text-align: center;
+  margin: 18px auto 0;
+  max-width: 60ch;
+  line-height: 1.5;
+}
+.leitmotif-world .bd-disclaimer::before,
+.leitmotif-world .bd-disclaimer::after {
+  content: "\00B7";
+  margin: 0 14px;
+  color: var(--bd-sheet-rule-2);
+  font-style: normal;
+}
+
+/* Sign block */
+.leitmotif-world .bd-sign {
+  border-top: 2px solid var(--bd-sheet-ink);
+  padding: 20px 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 28px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-sign > div span {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 17px;
+  color: var(--bd-sheet-ink);
+  margin-top: 6px;
+}
+.leitmotif-world .bd-sign > div small {
+  display: block;
+  font-family: var(--mono);
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  color: var(--bd-sheet-ink-3);
+  margin-top: 2px;
+}
+
+/* Perforated divider */
+.leitmotif-world .bd-perf-divider {
+  height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bd-sheet-bg);
+  position: relative;
+}
+.leitmotif-world .bd-perf-divider::before {
+  content: "";
+  position: absolute; left: 24px; right: 24px; top: 50%;
+  border-top: 1px dashed var(--bd-sheet-rule-2);
+}
+.leitmotif-world .bd-perf-divider .label {
+  position: relative;
+  background: var(--bd-sheet-bg);
+  padding: 0 14px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-perf-divider .label .scissor {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 11px;
+  color: var(--bd-sheet-ink-3);
+  transform: translateY(1px);
+}
+
+/* Receipt */
+.leitmotif-world .bd-receipt {
+  padding: 32px 48px 36px;
+  background: var(--bd-sheet-well);
+}
+.leitmotif-world .bd-receipt .head-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 22px;
+}
+.leitmotif-world .bd-receipt .head-row .title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 24px;
+  color: var(--bd-sheet-ink);
+}
+.leitmotif-world .bd-receipt .head-row .title .num {
+  color: var(--bd-sheet-accent);
+  font-style: italic;
+  margin-right: 12px;
+}
+.leitmotif-world .bd-receipt .head-row .ref {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-receipt .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+@media (max-width: 760px) {
+  .leitmotif-world .bd-receipt .grid { grid-template-columns: 1fr; }
+}
+
+/* Ack card (checkbox + name + initials → stamp) */
+.leitmotif-world .bd-ack .pre,
+.leitmotif-world .bd-note .pre {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+  margin-bottom: 12px;
+}
+.leitmotif-world .bd-ack .checkbox-row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+  align-items: start;
+  cursor: pointer;
+  padding: 14px 0;
+  border-top: 1px solid var(--bd-sheet-rule);
+  border-bottom: 1px solid var(--bd-sheet-rule);
+  background: transparent;
+  border-left: 0; border-right: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.leitmotif-world .bd-ack .checkbox-row .box {
+  width: 22px; height: 22px;
+  border: 1.5px solid var(--bd-sheet-ink);
+  background: transparent;
+  position: relative;
+  margin-top: 2px;
+  transition: background 160ms ease;
+}
+.leitmotif-world .bd-ack .checkbox-row .box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: none;
+  transition: opacity 200ms ease;
+  opacity: 0;
+}
+.leitmotif-world .bd-ack.checked .checkbox-row .box {
+  background: var(--bd-sheet-bg);
+}
+.leitmotif-world .bd-ack.checked .checkbox-row .box::after {
+  opacity: 1;
+  background:
+    linear-gradient(45deg,  transparent 45%, var(--bd-sheet-pencil) 45% 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 45%, var(--bd-sheet-pencil) 45% 55%, transparent 55%);
+}
+.leitmotif-world .bd-ack .checkbox-row .lab {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--bd-sheet-ink);
+}
+.leitmotif-world .bd-ack .checkbox-row .lab small {
+  display: block;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--bd-sheet-ink-3);
+  margin-top: 4px;
+}
+.leitmotif-world .bd-ack .signed-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 22px;
+  align-items: end;
+}
+.leitmotif-world .bd-ack .signed-row .field { position: relative; padding-bottom: 4px; }
+.leitmotif-world .bd-ack .signed-row .field input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bd-sheet-ink);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--bd-sheet-ink);
+  padding: 8px 0 6px;
+  outline: 0;
+}
+.leitmotif-world .bd-ack .signed-row .field input::placeholder {
+  color: var(--bd-sheet-ink-3);
+  opacity: 0.6;
+}
+.leitmotif-world .bd-ack .signed-row .field input:focus {
+  border-bottom-color: var(--bd-sheet-accent);
+}
+.leitmotif-world .bd-ack .signed-row .field .lab {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-ack .stamp {
+  position: relative;
+  margin-top: 22px;
+  display: none;
+}
+.leitmotif-world .bd-ack.checked .stamp { display: block; }
+.leitmotif-world .bd-ack .stamp .stamp-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  border: 2px solid var(--bd-sheet-pencil);
+  color: var(--bd-sheet-pencil);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  transform: rotate(-2.4deg);
+  background: transparent;
+  position: relative;
+}
+.leitmotif-world .bd-ack .stamp .stamp-mark::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--bd-sheet-pencil);
+  opacity: 0.45;
+  transform: translate(2px, 2px);
+  pointer-events: none;
+}
+.leitmotif-world .bd-ack .stamp .stamp-mark .ring {
+  display: inline-block;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bd-sheet-pencil);
+  position: relative;
+  flex: 0 0 28px;
+}
+.leitmotif-world .bd-ack .stamp .stamp-mark .ring::after {
+  content: "\2713";
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-style: italic;
+}
+.leitmotif-world .bd-ack .stamp .when {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+
+/* Note card */
+.leitmotif-world .bd-note {
+  border-left: 1px dashed var(--bd-sheet-rule-2);
+  padding-left: 32px;
+}
+@media (max-width: 760px) {
+  .leitmotif-world .bd-note {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px dashed var(--bd-sheet-rule-2);
+    padding-top: 22px;
+  }
+}
+.leitmotif-world .bd-note .pre .glyph {
+  color: var(--bd-sheet-accent);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-right: 8px;
+}
+.leitmotif-world .bd-note .helper {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--bd-sheet-ink-3);
+  margin: 0 0 14px;
+}
+.leitmotif-world .bd-note textarea {
+  width: 100%;
+  min-height: 140px;
+  background: linear-gradient(transparent 0 27px, var(--bd-sheet-rule) 27px 28px) 0 0/100% 28px;
+  border: 0;
+  border-bottom: 1px solid var(--bd-sheet-ink);
+  outline: 0;
+  resize: vertical;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--bd-sheet-ink);
+  padding: 0;
+  letter-spacing: 0.005em;
+}
+.leitmotif-world .bd-note textarea::placeholder {
+  color: var(--bd-sheet-ink-3);
+  opacity: 0.7;
+}
+.leitmotif-world .bd-note .send-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-note .send-row .send {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink);
+  border: 1px solid var(--bd-sheet-ink);
+  padding: 8px 14px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.leitmotif-world .bd-note .send-row .send:hover {
+  background: var(--bd-sheet-ink);
+  color: var(--bd-sheet-bg);
+}
+.leitmotif-world .bd-note .send-row .send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.leitmotif-world .bd-note .sent-mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--bd-sheet-ink-2);
+  margin-top: 14px;
+  border-left: 2px solid var(--bd-sheet-accent);
+  padding: 6px 0 6px 14px;
+}
+
+/* Colophon */
+.leitmotif-world .bd-colophon {
+  padding: 22px 48px 28px;
+  border-top: 1px solid var(--bd-sheet-rule);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bd-sheet-ink-3);
+}
+.leitmotif-world .bd-colophon .C {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bd-sheet-ink-2);
+}
+.leitmotif-world .bd-colophon .R { text-align: right; }
+
+/* Print — A4 portrait, paper register forced regardless of mode */
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  .leitmotif-world .brief-doc-page {
+    --bd-page-bg: #f1ead6;
+    --bd-sheet-bg: #f1ead6;
+    --bd-sheet-ink: #1a1612;
+    --bd-sheet-ink-2: #3a3226;
+    --bd-sheet-ink-3: #5a4f3a;
+    --bd-sheet-rule: #b8ad8e;
+    --bd-sheet-rule-2: #8c8166;
+    --bd-sheet-accent: #b8492c;
+    --bd-sheet-pencil: #8a2a1f;
+    --bd-sheet-well: #ece4cc;
+    --bd-sheet-well-2: #e3d9bc;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #f1ead6 !important;
+    color: #1a1612 !important;
+  }
+  .leitmotif-world .brief-doc-utility { display: none !important; }
+  .leitmotif-world .brief-doc-stage { padding: 0 !important; }
+  .leitmotif-world .brief-doc {
+    width: 100% !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .leitmotif-world .brief-doc::before { display: none !important; }
+  .leitmotif-world .bd-head,
+  .leitmotif-world .bd-picture,
+  .leitmotif-world .bd-body,
+  .leitmotif-world .bd-cue-block,
+  .leitmotif-world .bd-receipt,
+  .leitmotif-world .bd-colophon {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .leitmotif-world .bd-receipt {
+    break-before: page;
+    page-break-before: always;
+  }
+  .leitmotif-world .bd-perf-divider { display: none; }
+  .leitmotif-world .bd-note .send-row .send,
+  .leitmotif-world .bd-player .play { display: none; }
+  .leitmotif-world .bd-player { grid-template-columns: 1fr auto; }
 }
 
 /* "shadcn island" — reset editorial type back to app shell sans inside an
@@ -2133,12 +3262,6 @@ body:has(.leitmotif-world) {
     background: white !important;
     color: black !important;
   }
-  .leitmotif-world .brief-page-bar,
-  .leitmotif-world .brief-page-disclaimer,
-  .leitmotif-world .brief-page-ack,
-  .leitmotif-world .brief-page-foot {
-    display: none !important;
-  }
   .leitmotif-world .brief {
     --brief-bg:     white;
     --brief-bg-2:   #f5f0e0;
@@ -2155,11 +3278,6 @@ body:has(.leitmotif-world) {
   }
   .leitmotif-world .brief::before,
   .leitmotif-world .brief::after {
-    display: none !important;
-  }
-  /* The audio player can't function on paper — hide it; keep the wave block's
-     label and timecode scale so the cue file reference still prints. */
-  .leitmotif-world .brief-wave-player {
     display: none !important;
   }
 }

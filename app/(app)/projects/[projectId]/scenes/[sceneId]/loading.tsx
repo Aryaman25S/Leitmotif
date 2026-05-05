@@ -1,67 +1,94 @@
+import { LeitmotifWorld } from '@/components/landing/LeitmotifWorld'
+import binderStyles from '@/app/(app)/projects/[projectId]/binder.module.css'
+import s from './editor.module.css'
+
+// Bar widths for the loading skeleton — fixed at module load so the render is
+// deterministic and the result is stable across SSR/CSR. Eight bars of varying
+// width is a nicer rhythm than uniform pulses.
+const SKEL_BARS = [62, 96, 78, 110, 70, 132, 88, 104]
+
 export default function SceneLoading() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-2">
-        <div className="h-4 w-32 bg-muted/50 rounded animate-pulse" />
-        <div className="h-4 w-2 bg-muted/30 rounded animate-pulse" />
-        <div className="h-4 w-40 bg-muted rounded animate-pulse" />
-      </div>
+    <LeitmotifWorld>
+      <div className={binderStyles.page}>
+        {/* Skeleton masthead — three columns, a quiet wordmark + caption. */}
+        <header className={binderStyles.mast}>
+          <div className={binderStyles.mastL}>
+            <span className={binderStyles.wordmark}>
+              <span className={binderStyles.perf} /><em>Leitmotif</em>
+            </span>
+          </div>
+          <div className={binderStyles.mastC}>
+            <div className={binderStyles.mastCap}>At the workbench</div>
+            <div className={binderStyles.mastDate}>house lights · opening the leaf</div>
+          </div>
+          <div className={binderStyles.mastR} aria-hidden />
+        </header>
 
-      {/* Meta strip */}
-      <div className="mb-5 pb-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="h-5 w-12 bg-muted/60 rounded animate-pulse" />
-          <div className="h-4 w-36 bg-muted/40 rounded animate-pulse" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left column */}
-        <div className="space-y-4">
-          {/* Video placeholder */}
-          <div className="aspect-video rounded-xl border-2 border-dashed border-border bg-muted/10 animate-pulse" />
-
-          {/* Tabs skeleton */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-1 bg-muted rounded-lg p-[3px] h-8">
-              <div className="bg-background rounded-md animate-pulse" />
-              <div className="bg-transparent rounded-md" />
+        {/* Skeleton slate. */}
+        <header className={s.slate}>
+          <nav className={s.slateCrumbs}>
+            <span>← <span>Loading…</span></span>
+          </nav>
+          <div className={s.slatePrimary}>
+            <div className={s.slateMeta}>
+              <span className={s.slateMetaCue}>Cue —</span>
+              <span className={s.slateMetaSep}>·</span>
+              <span className={s.slateMetaPos}>— of —</span>
             </div>
+            <h1 className={s.slateTitle}>—</h1>
+          </div>
+          <div className={s.slateR}>
+            <span className={s.tc}><em>—</em><span className={s.tcArrow}>→</span><em>—</em></span>
+          </div>
+        </header>
 
-            {/* Intent form skeleton */}
-            <div className="space-y-5 mt-4">
-              <div>
-                <div className="h-4 w-36 bg-muted/50 rounded animate-pulse mb-3" />
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-7 rounded-full bg-muted/30 animate-pulse"
-                      style={{ width: `${60 + Math.random() * 80}px` }}
-                    />
-                  ))}
+        {/* Skeleton body — empty picture + faint brief outline + leader spinner. */}
+        <div className={s.body}>
+          <div className={s.colLeft}>
+            <section className={s.block}>
+              <div className={s.blockHead}>
+                <span className={s.blockNum}>i.</span>
+                <h2 className={s.blockTitle}>The picture</h2>
+              </div>
+              <div className={`${s.picture} ${s.pictureEmpty}`}>
+                <div className={s.pictureStrip}>
+                  <div className={s.picturePerfs} />
+                  <div className={s.pictureFrame} aria-hidden />
+                  <div className={s.picturePerfs} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="h-4 w-48 bg-muted/50 rounded animate-pulse" />
-                <div className="h-8 w-full bg-muted/20 rounded-lg border border-border animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-4 w-24 bg-muted/50 rounded animate-pulse" />
-                <div className="h-8 w-full bg-muted/20 rounded-lg border border-border animate-pulse" />
-              </div>
-            </div>
-          </div>
-        </div>
+            </section>
 
-        {/* Right column */}
-        <div className="rounded-xl border border-border bg-card p-5 space-y-5">
-          <div className="h-5 w-20 bg-muted rounded animate-pulse" />
-          <div className="h-8 w-full bg-muted/40 rounded-lg animate-pulse" />
-          <div className="h-3 w-56 bg-muted/30 rounded animate-pulse mx-auto" />
+            <section className={s.block}>
+              <div className={s.blockHead}>
+                <span className={s.blockNum}>I.</span>
+                <h2 className={s.blockTitle}>The brief</h2>
+                <span className={s.blockAside}>opening the binder…</span>
+              </div>
+              <div className={s.density}>
+                {SKEL_BARS.map((w, i) => (
+                  <div key={i} className={s.dens} style={{ opacity: 0.4 }}>
+                    <span className={s.densCap}>—</span>
+                    <span className={s.densGlyph} style={{ width: w }} />
+                    <span className={s.densLabel}>—</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <aside className={s.colRight}>
+            <section className={`${s.result} ${s.resultGen}`}>
+              <div className={s.genBody}>
+                <div className={s.leader}>3</div>
+                <h3 className={s.genTitle}>House lights.</h3>
+                <p className={s.genSub}>The leaf is still loading.</p>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
-    </div>
+    </LeitmotifWorld>
   )
 }

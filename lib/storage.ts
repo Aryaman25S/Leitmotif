@@ -163,23 +163,52 @@ export async function readFileBuffer(fileKey: string): Promise<Buffer | null> {
   return fs.readFileSync(p)
 }
 
-/** Stream object bytes for GET /api/files (R2 or local disk). */
-export async function streamStorageObject(fileKey: string): Promise<{
+/**
+ * Stream object bytes for GET /api/files (R2 or local disk).
+ *
+ * If `range` is provided, returns only that byte range and reports both
+ * `contentLength` (the slice size) and `totalLength` (the whole-object
+ * size). The route uses `totalLength` to build the `Content-Range`
+ * response header for HTTP 206. `<audio>` / `<video>` elements issue
+ * Range requests before playback; without proper 206 responses, Safari
+ * refuses to play and Chrome can hang on metadata loading.
+ */
+export async function streamStorageObject(
+  fileKey: string,
+  range?: { start: number; end?: number }
+): Promise<{
   stream: ReadableStream<Uint8Array>
   contentType: string
   contentLength?: number
+  totalLength?: number
 } | null> {
   if (useR2) {
     try {
-      const out = await getS3().send(
-        new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileKey })
-      )
+      const cmd = new GetObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: fileKey,
+        ...(range
+          ? { Range: `bytes=${range.start}-${range.end ?? ''}` }
+          : {}),
+      })
+      const out = await getS3().send(cmd)
       if (!out.Body) return null
       const len = out.ContentLength
+      // S3 returns ContentRange like "bytes 0-1000/1389731" on partial
+      // responses; parse the tail to get the whole-object size. Falls back
+      // to the (un-ranged) ContentLength when there's no range request.
+      let totalLength: number | undefined
+      if (out.ContentRange) {
+        const m = out.ContentRange.match(/\/(\d+)$/)
+        if (m) totalLength = parseInt(m[1], 10)
+      } else if (typeof len === 'number') {
+        totalLength = len
+      }
       return {
         stream: out.Body.transformToWebStream(),
         contentType: out.ContentType ?? contentTypeFromKey(fileKey),
         ...(typeof len === 'number' && len > 0 ? { contentLength: len } : {}),
+        ...(totalLength != null ? { totalLength } : {}),
       }
     } catch {
       return null
@@ -189,12 +218,18 @@ export async function streamStorageObject(fileKey: string): Promise<{
   const p = getFilePath(fileKey)
   if (!fs.existsSync(p)) return null
   const st = fs.statSync(p)
-  const nodeReadable = fs.createReadStream(p)
+  const total = st.size
+  const start = range?.start ?? 0
+  const end = range ? Math.min(range.end ?? total - 1, total - 1) : total - 1
+  if (start > end || start >= total) return null
+  const length = end - start + 1
+  const nodeReadable = fs.createReadStream(p, { start, end })
   const stream = Readable.toWeb(nodeReadable) as ReadableStream<Uint8Array>
   return {
     stream,
     contentType: contentTypeFromKey(fileKey),
-    contentLength: st.size,
+    contentLength: length,
+    totalLength: total,
   }
 }
 

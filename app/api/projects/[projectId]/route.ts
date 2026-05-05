@@ -42,10 +42,25 @@ export async function PATCH(
 
   const body = await req.json()
 
+  const runtimeMinutes =
+    typeof body.runtime_minutes === 'number' && Number.isFinite(body.runtime_minutes)
+      ? Math.max(0, Math.round(body.runtime_minutes))
+      : body.runtime_minutes === null
+        ? null
+        : undefined
+  const slate =
+    typeof body.slate === 'string'
+      ? body.slate.trim() || null
+      : body.slate === null
+        ? null
+        : undefined
+
   const project = await updateProject(projectId, {
     title: body.title,
     tone_brief: body.tone_brief,
     format: body.format,
+    runtime_minutes: runtimeMinutes,
+    slate,
   })
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })

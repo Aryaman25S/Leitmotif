@@ -561,7 +561,10 @@
   display: flex; align-items: center; justify-content: center; gap: 24px;
   flex-wrap: wrap;
 }
-.ll-btn-primary {
+/* Tagged with `a.` so these win specificity against the global
+   `.leitmotif-world a { color: inherit }` rule (otherwise the button text
+   inherits --ink and disappears against the dark --ink background). */
+a.ll-btn-primary {
   font-family: var(--sans);
   font-size: 12px;
   letter-spacing: 0.22em;
@@ -570,11 +573,11 @@
   color: var(--bg);
   background: var(--ink);
   padding: 16px 28px;
-  transition: background .25s ease;
+  transition: background .25s ease, color .25s ease;
   display: inline-block;
 }
-.ll-btn-primary:hover { background: var(--ember); }
-.ll-btn-quiet {
+a.ll-btn-primary:hover { background: var(--ember); color: var(--bg); }
+a.ll-btn-quiet {
   font-family: var(--sans);
   font-size: 12px;
   letter-spacing: 0.22em;
@@ -585,7 +588,7 @@
   padding-bottom: 4px;
   transition: color .2s ease, border-color .2s ease;
 }
-.ll-btn-quiet:hover { color: var(--ember); border-color: var(--ember); }
+a.ll-btn-quiet:hover { color: var(--ember); border-color: var(--ember); }
 .ll-empty-or {
   font-family: var(--serif);
   font-style: italic;

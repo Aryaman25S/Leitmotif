@@ -1,7 +1,12 @@
-import SignUpForm from './SignUpForm'
+import { Suspense } from 'react'
+import { TicketAuth } from '@/components/auth/TicketAuth'
 import { getEnabledOAuthProviderIds } from '@/lib/oauth-providers'
 
 export default function SignUpPage() {
   const oauthProviders = getEnabledOAuthProviderIds()
-  return <SignUpForm oauthProviders={oauthProviders} />
+  return (
+    <Suspense fallback={null}>
+      <TicketAuth initialMode="signup" oauthProviders={oauthProviders} />
+    </Suspense>
+  )
 }
