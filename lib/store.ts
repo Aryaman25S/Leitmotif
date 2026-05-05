@@ -87,6 +87,7 @@ export interface SceneCard {
   video_duration_sec: number | null
   status: string
   director_note: string | null
+  screenplay_text: string | null
   created_at: string
   created_by: string | null
 }
@@ -1065,6 +1066,7 @@ export async function createSceneCard(
       video_duration_sec: data.video_duration_sec,
       status: data.status,
       director_note: data.director_note,
+      screenplay_text: data.screenplay_text,
       created_by: data.created_by,
     },
   })
@@ -1090,6 +1092,7 @@ export async function updateSceneCard(
         video_duration_sec: data.video_duration_sec,
         status: data.status,
         director_note: data.director_note,
+        screenplay_text: data.screenplay_text,
       },
     })
     return { ...s, created_at: isoRequired(s.created_at) }

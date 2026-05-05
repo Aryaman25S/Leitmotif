@@ -170,6 +170,7 @@ model SceneCard {
   video_duration_sec    Float?
   status                String   @default("untagged")
   director_note         String?
+  screenplay_text       String?
   created_at            DateTime @default(now())
   created_by            String?
 

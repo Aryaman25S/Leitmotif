@@ -1556,3 +1556,99 @@
   .delivery { grid-template-columns: 1fr; gap: 8px; padding: 16px 24px; }
   .deliveryR { text-align: left; }
 }
+
+/* ── Screenplay block + autofill ────────────────────────────────────────── */
+.screenplayTextarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  border: 1px dotted var(--rule-2);
+  padding: 14px 16px;
+  outline: none;
+  resize: vertical;
+  min-height: 160px;
+  font-family: var(--mono);
+  font-size: 13px; line-height: 1.55;
+  color: var(--ink);
+}
+.screenplayTextarea:focus { border-color: var(--ember); border-style: solid; }
+.screenplayTextarea::placeholder { color: var(--ink-3); opacity: 1; }
+.screenplayTextarea:disabled { color: var(--ink-2); cursor: default; }
+
+.screenplayFoot {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* Doubled (.foo.foo) to override the global
+ * `.leitmotif-world button { background: none; border: 0; }` reset. */
+.autofillBtn.autofillBtn {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ember);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--ember);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.autofillBtn.autofillBtn:hover:not(:disabled) {
+  border-bottom-style: solid;
+}
+.autofillBtn.autofillBtn:disabled {
+  color: var(--ink-3);
+  border-bottom-color: var(--rule-2);
+  cursor: not-allowed;
+}
+
+.modeChoice {
+  display: flex; align-items: baseline; gap: 18px;
+  flex-wrap: wrap;
+}
+.modeChoiceLabel {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink-3);
+}
+.modeBtn.modeBtn {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.modeBtn.modeBtn:hover { color: var(--ember); border-bottom-color: var(--ember); }
+
+.autofillStatus {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ember);
+  animation: cepulse 1.6s ease-in-out infinite;
+}
+
+/* ── Low-confidence banner (post-autofill) ─────────────────────────────── */
+.lowConfBanner {
+  display: flex; align-items: baseline; gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 18px 0 6px;
+  border-left: 2px solid var(--ember);
+  background: color-mix(in oklab, var(--ember) 5%, transparent);
+}
+.lowConfBannerLabel {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--ember);
+}
+.lowConfBannerList {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--ink);
+}
+.lowConfBannerNote {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+  margin-left: auto;
+}

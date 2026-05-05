@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { ATMOSPHERE_DESCRIPTORS, FUNCTION_DESCRIPTORS, DENSITY_PHRASES, KEY_SIGNATURES } from '@/lib/prompts/taxonomy'
 import { buildGenerationPrompt, buildMusicalSpec } from '@/lib/prompts/buildGenerationPrompt'
 import type { IntentVersion, MockCue, GenerationSettings } from '@/lib/store'
+import type { AutofillField, AutofillResult } from '@/lib/ai/autofillFromScreenplay'
 import s from './editor.module.css'
 
 // ── Constants — design vocabulary ────────────────────────────────────────────
@@ -122,6 +123,7 @@ interface SceneEditorProps {
   videoUrl: string | null
   videoDurationSec: number | null
   initialIntent: IntentVersion | null
+  initialScreenplay: string | null
   initialMockCues: MockCueWithProvider[]
   initialJobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   initialJobStartedAt: string | null
@@ -160,6 +162,17 @@ export default function SceneEditor(props: SceneEditorProps) {
   const [keySig, setKeySig] = useState<string>(intent?.key_signature ?? '')
   const [instruments, setInstruments] = useState<string>(intent?.featured_instruments ?? '')
 
+  // Screenplay text + autofill state. Lives on SceneCard (one screenplay per
+  // scene, informs many intent versions). `savedScreenplay` is the persisted
+  // baseline for dirty-detection so editing the textarea alone enables Save.
+  const [screenplay, setScreenplay] = useState<string>(props.initialScreenplay ?? '')
+  const [savedScreenplay, setSavedScreenplay] = useState<string>(props.initialScreenplay ?? '')
+  const [autofilling, setAutofilling] = useState(false)
+  const [modePickerOpen, setModePickerOpen] = useState(false)
+  // Field keys flagged low-confidence by the most recent autofill — shown as
+  // a single banner above ComposeBar. Cleared on save.
+  const [lowConfidence, setLowConfidence] = useState<string[]>([])
+
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -172,7 +185,10 @@ export default function SceneEditor(props: SceneEditorProps) {
     () => ({ atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments }),
     [atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments],
   )
-  const dirty = useMemo(() => !sameSnapshot(baseline, draft), [baseline, draft])
+  const dirty = useMemo(
+    () => !sameSnapshot(baseline, draft) || screenplay !== savedScreenplay,
+    [baseline, draft, screenplay, savedScreenplay],
+  )
 
   // Derived state.
   const approvedCue = mockCues.find((c) => c.is_approved) ?? null
@@ -288,6 +304,76 @@ export default function SceneEditor(props: SceneEditorProps) {
     )
   }
 
+  const briefIsEmpty =
+    atms.length === 0 && !fn && !balance && !diegetic && !recurrence.trim() &&
+    !dens && !words.trim() && !wrong.trim() && bpm == null && !keySig &&
+    !instruments.trim()
+
+  async function handleAutofill(mode: 'overwrite' | 'fill_empty') {
+    const trimmed = screenplay.trim()
+    if (!trimmed) {
+      toast.error('Paste a screenplay first.')
+      return
+    }
+    setAutofilling(true)
+    try {
+      const res = await fetch(`/api/scenes/${sceneId}/autofill-from-screenplay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ screenplay: trimmed }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? 'Autofill failed.')
+        return
+      }
+      const result = data.result as AutofillResult
+      const lows: string[] = []
+
+      // Apply each field. In 'fill_empty' mode we only write when the current
+      // value is empty; in 'overwrite' mode we always write a non-null AI value
+      // (a null AI value never blanks a director's existing input).
+      const apply = <T,>(
+        key: string,
+        currentEmpty: boolean,
+        field: AutofillField<T | null>,
+        setter: (v: T) => void,
+      ) => {
+        if (field.value === null || field.value === undefined) return
+        if (mode === 'fill_empty' && !currentEmpty) return
+        setter(field.value as T)
+        if (field.confidence === 'low') lows.push(key)
+      }
+
+      apply('atmospheres', atms.length === 0,
+        result.emotional_atmospheres as AutofillField<string[] | null>,
+        (v) => setAtms(v as string[]))
+      apply('narrative function', !fn, result.narrative_function, setFn)
+      apply('density',             !dens, result.density, setDens)
+      apply('source',              !diegetic, result.diegetic_status, setDiegetic)
+      apply('balance',             !balance, result.handoff_setting, setBalance)
+      apply('BPM',                 bpm == null, result.target_bpm, setBpm)
+      apply('key',                 !keySig, result.key_signature, setKeySig)
+      apply('format',              formatTag === 'Band' || !formatTag, result.format_tag, setFormatTag)
+      apply('instruments',         !instruments.trim(), result.featured_instruments, setInstruments)
+      apply("director's words",    !words.trim(), result.director_words, setWords)
+      apply('what would be wrong', !wrong.trim(), result.what_would_be_wrong, setWrong)
+      // recording_quality and working_title are returned by the model but the
+      // editor doesn't surface them today — skip until they have UI.
+
+      setLowConfidence(lows)
+      toast.success(
+        mode === 'overwrite'
+          ? 'Brief filled from screenplay.'
+          : 'Empty fields filled from screenplay.',
+      )
+    } catch {
+      toast.error('Autofill failed.')
+    } finally {
+      setAutofilling(false)
+    }
+  }
+
   async function handleSave(): Promise<IntentVersion | null> {
     if (!atms.length) {
       toast.error('Choose at least one atmosphere before saving.')
@@ -295,6 +381,20 @@ export default function SceneEditor(props: SceneEditorProps) {
     }
     setSaving(true)
     try {
+      // Persist screenplay alongside the intent. Non-blocking on failure —
+      // the intent save is the user-visible action; a screenplay save error
+      // surfaces as a separate console warning, not a blocking toast.
+      if (screenplay !== savedScreenplay) {
+        fetch(`/api/scenes/${sceneId}/meta`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ screenplay_text: screenplay }),
+        }).then((r) => {
+          if (r.ok) setSavedScreenplay(screenplay)
+          else console.warn('[scene-editor] failed to persist screenplay_text')
+        }).catch((e) => console.warn('[scene-editor] screenplay save error', e))
+      }
+
       const res = await fetch('/api/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -331,6 +431,7 @@ export default function SceneEditor(props: SceneEditorProps) {
       }
       const iv = data.intentVersion as IntentVersion
       setIntent(iv)
+      setLowConfidence([])
       toast.success('Brief saved.')
       router.refresh()
       return iv
@@ -502,6 +603,71 @@ export default function SceneEditor(props: SceneEditorProps) {
             onUploaded={() => router.refresh()}
           />
 
+          {(canDirect || screenplay.trim().length > 0) && (
+            <section className={s.block}>
+              <div className={s.blockHead}>
+                <h2 className={s.blockTitle}>Screenplay</h2>
+                <span className={s.blockAside}>
+                  the page the brief flows from — <em>autofill if you&rsquo;d rather not start blank</em>
+                </span>
+              </div>
+              <textarea
+                className={s.screenplayTextarea}
+                value={screenplay}
+                onChange={(e) => setScreenplay(e.target.value)}
+                placeholder={canDirect ? 'Paste the screenplay for this scene…' : ''}
+                disabled={!canDirect}
+                rows={8}
+              />
+              {canDirect && (
+                <div className={s.screenplayFoot}>
+                  {!autofilling && !modePickerOpen && (
+                    <button
+                      type="button"
+                      className={`${s.autofillBtn} ${s.autofillBtn}`}
+                      onClick={() => {
+                        if (briefIsEmpty) handleAutofill('overwrite')
+                        else setModePickerOpen(true)
+                      }}
+                      disabled={!screenplay.trim()}
+                    >
+                      Autofill from screenplay
+                    </button>
+                  )}
+                  {modePickerOpen && !autofilling && (
+                    <div className={s.modeChoice}>
+                      <span className={s.modeChoiceLabel}>Brief already has values —</span>
+                      <button
+                        type="button"
+                        className={`${s.modeBtn} ${s.modeBtn}`}
+                        onClick={() => { setModePickerOpen(false); handleAutofill('overwrite') }}
+                      >
+                        Replace all
+                      </button>
+                      <button
+                        type="button"
+                        className={`${s.modeBtn} ${s.modeBtn}`}
+                        onClick={() => { setModePickerOpen(false); handleAutofill('fill_empty') }}
+                      >
+                        Fill blanks only
+                      </button>
+                      <button
+                        type="button"
+                        className={`${s.modeBtn} ${s.modeBtn}`}
+                        onClick={() => setModePickerOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {autofilling && (
+                    <span className={s.autofillStatus}>Reading the page…</span>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
           <section className={s.block}>
             <div className={s.blockHead}>
               <span className={s.blockNum}>I.</span>
@@ -536,6 +702,14 @@ export default function SceneEditor(props: SceneEditorProps) {
             />
 
             <SpecDossier open={specOpen} onToggle={() => setSpecOpen((v) => !v)} spec={specLines} />
+
+            {canDirect && lowConfidence.length > 0 && (
+              <div className={s.lowConfBanner}>
+                <span className={s.lowConfBannerLabel}>AI was uncertain about</span>
+                <span className={s.lowConfBannerList}>{lowConfidence.join(' · ')}</span>
+                <span className={s.lowConfBannerNote}>review before saving</span>
+              </div>
+            )}
 
             {canDirect && (
               <ComposeBar

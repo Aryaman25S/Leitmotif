@@ -114,6 +114,7 @@ export default async function ScenePage({
           videoUrl={videoUrl}
           videoDurationSec={scene.video_duration_sec}
           initialIntent={latestIntent ?? null}
+          initialScreenplay={scene.screenplay_text}
           initialMockCues={mockCues}
           initialJobStatus={(latestJob?.status ?? null) as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null}
           initialJobStartedAt={latestJob?.started_at ?? latestJob?.queued_at ?? null}

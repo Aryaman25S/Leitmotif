@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     video_duration_sec: null,
     status: 'untagged',
     director_note: null,
+    screenplay_text: null,
     created_by: user.id,
   })
 
