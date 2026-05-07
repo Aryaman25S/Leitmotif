@@ -1272,7 +1272,6 @@ function AtmospheresField({
               const desc = ATMOSPHERE_DESCRIPTORS[k]
               if (!desc) return null
               const on = selected.includes(k)
-              const { primary, rest } = condenseAtmLabel(desc.label)
               return (
                 <button
                   key={k}
@@ -1282,15 +1281,9 @@ function AtmospheresField({
                   disabled={readOnly || (!on && selected.length >= 3)}
                   title={desc.description}
                 >
-                  <span className={s.atmWord}>{primary}</span>
-                  {rest.length > 0 && (
-                    <span className={s.atmAlt} aria-hidden="true">
-                      {rest.map((w, i) => (
-                        <span key={i}>
-                          <span className={s.atmAltSep}> / </span>{w}
-                        </span>
-                      ))}
-                    </span>
+                  <span className={s.atmWord}>{desc.label}</span>
+                  {desc.alsoCalled && (
+                    <span className={s.atmAlt} aria-hidden="true">{desc.alsoCalled}</span>
                   )}
                 </button>
               )
@@ -1300,18 +1293,6 @@ function AtmospheresField({
       ))}
     </div>
   )
-}
-
-// Split a slash-joined label into head + rest. The head word is the displayed
-// chip text; the rest shows on hover/selected as a fade-in. Trims and skips
-// empty fragments so `Calm / Peace / Resolution` → { primary: "Calm",
-// rest: ["Peace", "Resolution"] }. Trailing parenthetical qualifiers like
-// "Confidence / Swagger (adult drama)" stay attached to whichever word
-// they trail (here: "Swagger (adult drama)") rather than splitting on `(`.
-function condenseAtmLabel(full: string): { primary: string; rest: string[] } {
-  const parts = full.split('/').map((p) => p.trim()).filter(Boolean)
-  if (parts.length === 0) return { primary: full, rest: [] }
-  return { primary: parts[0], rest: parts.slice(1) }
 }
 
 function FunctionField({

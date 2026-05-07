@@ -1,5 +1,9 @@
 export interface AtmosphereDescriptor {
+  /** Headline — the word a director says first in a spotting session. */
   label: string
+  /** Also-called — a single sibling word that helps recognition when the
+   * headline doesn't click. Rendered as a quiet italic suffix on the chip. */
+  alsoCalled: string
   description: string
   positivePhrase: string
   doNotUse: string[]
@@ -26,7 +30,8 @@ export interface FunctionDescriptor {
 
 export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
   dread_ominous: {
-    label: 'Dread / Ominous Inevitability',
+    label: 'Dread',
+    alsoCalled: 'ominous',
     description: 'Something terrible is going to happen. The audience knows it. The character doesn\'t.',
     positivePhrase: 'ominous, inescapable dread, chromatic descent, low register, sparse texture, minor seconds, tritones, dark atmospheric tension',
     doNotUse: ['major key', 'melodic hook', 'driving rhythm', 'bright', 'cheerful', 'upbeat'],
@@ -38,7 +43,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'No steady pulse, or very slow pulse with syncopated disruption; tremolo preferred',
   },
   grief_sorrow: {
-    label: 'Grief / Sorrow / Loss',
+    label: 'Grief',
+    alsoCalled: 'sorrow',
     description: 'Something irreplaceable is gone. The character is trying to hold it together.',
     positivePhrase: 'melancholic, sorrowful, descending melodic lines, slow tempo, sparse chamber texture, unresolved suspensions, intimate, deeply felt grief',
     doNotUse: ['percussion', 'driving rhythm', 'fast tempo', 'major key', 'upbeat', 'energetic'],
@@ -50,7 +56,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Slow and unhurried; no driving percussion',
   },
   joy_elation: {
-    label: 'Joy / Elation',
+    label: 'Joy',
+    alsoCalled: 'elation',
     description: 'Something good has happened. The character allows themselves to feel it.',
     positivePhrase: 'joyful, elated, bright major key, upward melodic motion, strong clear pulse, layered texture, energetic, celebratory',
     doNotUse: ['unresolved harmony', 'minor key', 'sparse', 'rubato', 'dread', 'tension'],
@@ -62,7 +69,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Strong downbeats; clear pulse; syncopation that adds energy',
   },
   confidence_swagger: {
-    label: 'Confidence / Swagger (adult drama)',
+    label: 'Confidence',
+    alsoCalled: 'swagger',
     description:
       "The character owns the room — cool, sleek, rhythmic. Think prestige cable walk, not celebration and not kids' TV.",
     positivePhrase:
@@ -86,7 +94,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Syncopated pocket with attitude; steady enough to strut, never frantic',
   },
   triumph: {
-    label: 'Triumph / Earned Victory',
+    label: 'Triumph',
+    alsoCalled: 'victory',
     description: 'The character has gone through something hard and come out the other side. They earned this.',
     positivePhrase: 'triumphant, earned victory, broad major key, gravitas, strong brass, full strings, building to climactic peak',
     // Avoid cheapening triumph; do not blanket-ban "playful" or "pop" — those block confident struts and light corporate energy
@@ -99,7 +108,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Strong downbeats; measured and purposeful',
   },
   tension_anxiety: {
-    label: 'Tension / Anxiety',
+    label: 'Tension',
+    alsoCalled: 'anxiety',
     description: 'Something could go wrong at any moment. The character — and audience — is waiting.',
     positivePhrase: 'tense, anxious, chromatic, unresolved harmony, building density, irregular meter, suspended, uncertain',
     doNotUse: ['resolved cadence', 'major key', 'steady pulse', 'melodic clarity', 'consonant'],
@@ -111,7 +121,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Off-beat emphasis; syncopation; irregular meters (5/4, 7/8)',
   },
   calm_peace: {
-    label: 'Calm / Peace / Resolution',
+    label: 'Calm',
+    alsoCalled: 'peace',
     description: 'The tension has passed. The character can breathe.',
     positivePhrase: 'calm, peaceful, gently resolved harmony, soft, unhurried, atmospheric pad, breathing room between notes',
     doNotUse: ['dissonance', 'driving percussion', 'irregular meter', 'tension', 'urgency'],
@@ -123,7 +134,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Gentle, unhurried; pulse feels like breathing',
   },
   wonder_awe: {
-    label: 'Wonder / Awe / Vastness',
+    label: 'Wonder',
+    alsoCalled: 'awe',
     description: 'The character encounters something larger than themselves. They feel small.',
     positivePhrase: 'awe-inspiring, vast, major sevenths, suspended chords, expansive, wide dynamic range, immeasurable',
     doNotUse: ['propulsive rhythm', 'predictable cadence', 'upbeat', 'busy', 'comedy'],
@@ -135,7 +147,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Free; no metronomic pulse',
   },
   intimacy_tenderness: {
-    label: 'Intimacy / Tenderness / Vulnerability',
+    label: 'Intimacy',
+    alsoCalled: 'tenderness',
     description: 'A quiet moment between two people, or a character alone with something true about themselves.',
     positivePhrase: 'intimate, tender, solo or duo instrumentation, simple folk-like harmony, very soft, close, delicate, vulnerable',
     doNotUse: ['orchestral density', 'electronic', 'driving rhythm', 'power', 'grandeur'],
@@ -147,7 +160,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Gentle, unmeasured preferred; no percussion',
   },
   menace: {
-    label: 'Menace / Threat / Predatory Danger',
+    label: 'Menace',
+    alsoCalled: 'predatory',
     description: 'A character or situation is dangerous in a calculated, cold way. Not explosive — present.',
     positivePhrase: 'menacing, predatory, low cluster chords, brass stabs, calculated, cold, dangerous, asymmetric density, tritones, dissonance',
     doNotUse: ['lyrical melody', 'regular pulse', 'warmth', 'comfort', 'bright'],
@@ -159,7 +173,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Strong and irregular; or complete absence followed by sudden rhythm',
   },
   irony_dissonance: {
-    label: 'Irony / Image-Music Dissonance',
+    label: 'Irony',
+    alsoCalled: 'dissonance',
     description: 'What we see and what we feel are in deliberate conflict. Music comments on the image, it doesn\'t confirm it.',
     positivePhrase: 'ironic, detached, deliberate tonal contradiction, cognitive friction, cheerful music over dark imagery',
     doNotUse: ['predictable', 'on-the-nose', 'conventional scoring'],
@@ -171,7 +186,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Incongruous with visual pacing',
   },
   nostalgia_longing: {
-    label: 'Nostalgia / Longing / Memory',
+    label: 'Nostalgia',
+    alsoCalled: 'longing',
     description: 'Something from the past is being felt in the present. The character wants what was.',
     positivePhrase: 'nostalgic, longing, major with minor inflections, simple memorable melodic fragment, unhurried, bittersweet, analog warmth, time slowing down',
     doNotUse: ['clinical', 'processed', 'bright major', 'energetic', 'modern production'],
@@ -183,7 +199,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Unhurried; no driving pulse',
   },
   urgency_propulsion: {
-    label: 'Urgency / Propulsion / Drive',
+    label: 'Urgency',
+    alsoCalled: 'propulsion',
     description: 'Something must happen now. The character is moving against time.',
     positivePhrase: 'urgent, propulsive, relentless pulse, driving eighth-note rhythm, forward momentum, repetitive harmony, intense energy',
     doNotUse: ['rubato', 'slow', 'sparse', 'wandering harmony', 'resolution'],
@@ -195,7 +212,8 @@ export const ATMOSPHERE_DESCRIPTORS: Record<string, AtmosphereDescriptor> = {
     specRhythm: 'Even eighth or sixteenth note pulse; strong downbeats',
   },
   doubt_ambiguity: {
-    label: 'Doubt / Ambiguity / Unresolved Question',
+    label: 'Doubt',
+    alsoCalled: 'ambiguity',
     description: 'We don\'t know what to feel. The character doesn\'t know what\'s true.',
     positivePhrase: 'uncertain, ambiguous, bitonal, polytonal, irregular rhythm, no clear tonal center, unresolved, questioning',
     doNotUse: ['tonal center', 'major resolution', 'minor resolution', 'strong pulse', 'definitive'],

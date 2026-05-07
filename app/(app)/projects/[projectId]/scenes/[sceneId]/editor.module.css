@@ -432,10 +432,11 @@
 .atm:disabled:hover { color: var(--ink-2); }
 .atmWord { white-space: nowrap; }
 
-/* Synonym tail — collapsed by default, expands on hover/selected via
- * max-width transition. Setting a max-width that exceeds the actual text
- * width animates smoothly to the natural content width without jank.
- * The tail is aria-hidden because the full label is already in `title`. */
+/* Also-called — single sibling word, collapsed by default, expands on
+ * hover/selected via max-width transition. Renders as a quiet italic
+ * suffix beside the headline (no slash separator — the typography does
+ * the disambiguation work). aria-hidden because the headline is the
+ * canonical label and the chip already has a `title` for the description. */
 .atmAlt {
   display: inline-block;
   max-width: 0;
@@ -444,16 +445,18 @@
   vertical-align: baseline;
   color: var(--ink-4);
   font-size: 14px;
+  font-style: italic;
   opacity: 0;
   transition:
     max-width .35s cubic-bezier(0.2, 0.65, 0.28, 1),
+    margin-left .35s cubic-bezier(0.2, 0.65, 0.28, 1),
     opacity .25s ease,
     color .2s ease;
 }
-.atmAltSep { color: var(--ink-4); }
 .atm:hover .atmAlt,
 .atm:focus-visible .atmAlt {
   max-width: 24em;
+  margin-left: 0.4em;
   opacity: 0.85;
   color: var(--ink-3);
 }
@@ -479,11 +482,9 @@
 .atmOn .atmAlt,
 .atmOn:hover .atmAlt {
   max-width: 24em;
+  margin-left: 0.4em;
   opacity: 1;
   color: color-mix(in oklab, var(--ink) 80%, var(--ember));
-}
-.atmOn .atmAltSep {
-  color: var(--ember);
 }
 
 /* ── "Where the music sits" — typographic equalizer ──────────────────────── */
