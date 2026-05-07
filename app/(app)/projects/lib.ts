@@ -143,6 +143,7 @@ const FORMAT_DISPLAY: Record<string, string> = {
   episodic: 'Episodic',
   short: 'Short',
   commercial: 'Commercial',
+  documentary: 'Documentary',
 }
 export function formatDisplay(format: string): string {
   return FORMAT_DISPLAY[format] ?? (format.charAt(0).toUpperCase() + format.slice(1))

@@ -1,0 +1,158 @@
+/*
+ * Shared chrome for app-level message pages (error boundary, not-found,
+ * future system pages). Editorial register, consumes world tokens (--ink,
+ * --ink-2, --ink-3, --ink-4, --bg, --ember, --rule, --serif, --mono) via
+ * the surrounding <LeitmotifWorld>.
+ *
+ * Visual treatment matches the projects empty-state and brief receipt: thin
+ * hairline rules bracketing a centered folio, italic-serif quoted title,
+ * serif body, mono-cap action row, optional "Footnote" margin annotation.
+ * Buttons doubled (.foo.foo) to win the world's button reset.
+ */
+
+.stage {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.card {
+  width: min(640px, 100%);
+  text-align: center;
+}
+
+.ruleTop,
+.ruleBot {
+  height: 1px;
+  background: var(--rule);
+  margin: 0 auto;
+  width: min(420px, 80%);
+}
+
+.folio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 26px 0 14px;
+}
+.folioOrn {
+  width: 28px;
+  height: 1px;
+  background: var(--ink-3);
+  display: block;
+}
+.smallcaps {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ember);
+}
+
+.title {
+  margin: 6px 0 18px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(28px, 3.4vw, 40px);
+  line-height: 1.15;
+  color: var(--ink);
+}
+.q {
+  color: var(--ember);
+  font-style: normal;
+  margin: 0 4px;
+}
+
+.body {
+  margin: 0 auto 28px;
+  max-width: 440px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 0 26px;
+}
+
+.btnPrimary.btnPrimary {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--ember);
+  border: 0;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+.btnPrimary.btnPrimary:hover {
+  background: color-mix(in oklab, var(--ember) 86%, white 14%);
+}
+
+.btnQuiet.btnQuiet {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--ink-4);
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+.btnQuiet.btnQuiet:hover {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+
+.or {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.footnote {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px 0 4px;
+  font-family: var(--serif);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.footnoteLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.footnoteDigest {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}

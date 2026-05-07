@@ -42,8 +42,6 @@ export async function POST(req: NextRequest) {
     spec_rhythm: body.spec_rhythm ?? null,
     spec_instrumentation: body.spec_instrumentation ?? null,
     spec_do_not_use: body.spec_do_not_use ?? null,
-    spec_confirmed_by: null,
-    spec_confirmed_at: null,
     created_by: user.id,
   })
 

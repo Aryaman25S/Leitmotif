@@ -1,0 +1,277 @@
+/*
+ * Margin notes — editorial register, consumes world tokens (--ink, --ink-2,
+ * --ink-3, --ember, --rule, --rule-2, --serif, --mono). Both surfaces (cue
+ * editor + brief) provide these tokens via .leitmotif-world / .brief-doc-page.
+ *
+ * Buttons and links are doubled (.foo.foo) where they need to win the world's
+ * a / button resets in app/globals.css — same trick the editor module uses.
+ */
+
+.notes {
+  margin-top: 56px;
+  font-family: var(--serif);
+  color: var(--ink);
+}
+/* Fill-height variant — applied on the cue editor where the right column
+   stretches to match the left's height. The section becomes a flex column,
+   takes whatever vertical space remains below the result panel above it,
+   and the inner list flex-grows inside it (see .listFill). */
+.notesFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule, var(--ink-4));
+  margin-bottom: 18px;
+}
+.headLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.headRule {
+  height: 0;
+  border-top: 1px dotted var(--rule-2, var(--ink-4));
+}
+.headCount {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+
+.empty {
+  margin: 18px 0 0;
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Bound the list so the comment thread doesn't drag the page past the
+     left content. Header, compose, and "Show earlier" all sit outside this
+     scroll. The fill-height variant below replaces this fixed cap with
+     flex:1 so the editor's right column uses every available pixel. */
+  max-height: 480px;
+  overflow-y: auto;
+  /* Subtle scrollbar tuned to the editorial palette (Firefox). */
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-4) transparent;
+}
+.listFill {
+  flex: 1;
+  min-height: 240px;
+  max-height: none;
+}
+.list::-webkit-scrollbar { width: 6px; }
+.list::-webkit-scrollbar-track { background: transparent; }
+.list::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border-radius: 3px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+}
+.item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.metaName { color: var(--ink-2); }
+.metaSep  { color: var(--ink-4); }
+.metaWhen { color: var(--ink-3); }
+
+.body {
+  margin: 0;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bodyClamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.showMore.showMore {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+  padding: 1px 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.showMore.showMore:hover {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+
+.compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input.input {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  padding: 6px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input.input:focus {
+  border-bottom-color: var(--ember);
+}
+.input.input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.input.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.composeFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.composeHint {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.send.send {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+  padding: 2px 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.send.send:hover:not(:disabled) {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+.send.send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.signin {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink-3);
+  font-style: italic;
+}
+.signinLink {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+  padding-bottom: 1px;
+}
+.signinLink:hover {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+
+.loadMore {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+.loadMoreBtn.loadMoreBtn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--rule-2, var(--ink-4));
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.loadMoreBtn.loadMoreBtn:hover:not(:disabled) {
+  color: var(--ember);
+  border-bottom-color: var(--ember);
+}
+.loadMoreBtn.loadMoreBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.loadMoreSignin {
+  margin: 18px 0 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-3);
+  font-style: italic;
+}

@@ -12,6 +12,8 @@ import {
   getProjectRoleForProfile,
   getProjectBinder,
   getProjectMembers,
+  getComments,
+  getCommentCount,
 } from '@/lib/store'
 import { canDirect, canApprove, type EffectiveRole } from '@/lib/roles'
 import { getFileUrl } from '@/lib/storage'
@@ -39,7 +41,7 @@ export default async function ScenePage({
   if (!scene || scene.project_id !== projectId) notFound()
 
   // Single round of parallel reads — page renders once everything is in.
-  const [projectAndOwner, latestIntent, genSettings, rawCues, latestJob, binder, members] =
+  const [projectAndOwner, latestIntent, genSettings, rawCues, latestJob, binder, members, commentsPage, commentTotal] =
     await Promise.all([
       getProjectWithOwner(projectId),
       getLatestIntent(sceneId),
@@ -48,6 +50,8 @@ export default async function ScenePage({
       getLatestJob(sceneId),
       getProjectBinder(projectId),
       getProjectMembers(projectId),
+      getComments(sceneId, { limit: 10 }),
+      getCommentCount(sceneId),
     ])
   if (!projectAndOwner) notFound()
   const project = projectAndOwner.project
@@ -118,6 +122,7 @@ export default async function ScenePage({
           initialMockCues={mockCues}
           initialJobStatus={(latestJob?.status ?? null) as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null}
           initialJobStartedAt={latestJob?.started_at ?? latestJob?.queued_at ?? null}
+          initialJobError={latestJob?.status === 'failed' ? latestJob.error_message ?? null : null}
           genSettings={genSettings ?? null}
           toneBrief={project.tone_brief}
           defaultModelProvider={genSettings?.model_provider ?? 'lyria'}
@@ -126,6 +131,9 @@ export default async function ScenePage({
           recipients={recipients}
           appUrl={appUrl}
           intentVersionsCount={intentVersionsCount}
+          initialComments={commentsPage.comments}
+          initialCommentsHasMore={commentsPage.hasMore}
+          initialCommentTotal={commentTotal}
         />
       </div>
     </LeitmotifWorld>

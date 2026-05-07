@@ -48,7 +48,15 @@ export default function BriefUtilityRibbon({ fileTag }: BriefUtilityRibbonProps)
           title="Jump to receipt"
           onClick={() => {
             const el = document.getElementById('bd-receipt')
-            el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            if (!el) return
+            // Honor prefers-reduced-motion — for users who've opted out,
+            // smooth scroll is exactly the kind of motion they don't want.
+            const reduce = typeof window !== 'undefined'
+              && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+            el.scrollIntoView({
+              behavior: reduce ? 'auto' : 'smooth',
+              block: 'start',
+            })
           }}
         >
           Acknowledge ↓

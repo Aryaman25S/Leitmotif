@@ -1,6 +1,6 @@
 import { ATMOSPHERE_DESCRIPTORS, FUNCTION_DESCRIPTORS } from './taxonomy'
 
-/** Select options for diegetic status (shared by SceneIntentEditor). */
+/** Select options for diegetic status. */
 export const DIEGETIC_OPTIONS = [
   { value: 'non_diegetic', label: 'Non-diegetic (score)', description: 'Heard by the audience only; characters do not hear it' },
   { value: 'diegetic', label: 'Diegetic (source music)', description: 'Heard by characters — TV, radio, live performance, etc.' },
@@ -8,7 +8,7 @@ export const DIEGETIC_OPTIONS = [
   { value: 'ambiguous', label: 'Intentionally ambiguous', description: 'The line between source and score is deliberately blurred' },
 ] as const
 
-/** Select options for score / sound balance (shared by SceneIntentEditor). */
+/** Select options for score / sound balance. */
 export const HANDOFF_OPTIONS = [
   { value: 'score_forward', label: 'Score forward', description: 'Music leads; sound design supports' },
   { value: 'sound_forward', label: 'Sound design forward', description: 'Diegetic or designed sound leads; score recedes' },

@@ -11,7 +11,6 @@ import type { Profile } from '@/lib/store'
 import {
   canDirect,
   canApprove,
-  canAcknowledge,
   type EffectiveRole,
 } from '@/lib/roles'
 
@@ -116,10 +115,17 @@ export async function assertCanAcknowledgeCue(
   profile: Profile,
   cueId: string
 ): Promise<NextResponse | null> {
+  // Acknowledgement records "the recipient has seen the brief" and grants no
+  // privilege beyond that. Anonymous viewers can already acknowledge via the
+  // public brief link (the route lets them through), so requiring a stricter
+  // role for signed-in users would be inconsistent — a director testing their
+  // own brief would be denied while a stranger with the link could proceed.
+  // Allow any project member; the role-based `canAcknowledge` predicate is
+  // still the right thing for *surfacing* the ack queue in UI.
   const projectId = await resolveCueProjectId(cueId)
   if (!projectId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const role = await getProjectRole(profile, projectId)
-  if (!canAcknowledge(role)) {
+  if (role == null) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null

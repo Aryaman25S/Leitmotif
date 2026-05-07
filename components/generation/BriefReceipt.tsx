@@ -9,7 +9,13 @@ interface BriefReceiptProps {
   fileTag: string
   alreadyAcknowledged: boolean
   existingNotes: string | null
+  existingSignedName: string | null
+  existingSignedInitials: string | null
   acknowledgedAt: string | null
+  existingScoredAt: string | null
+  // Resolved name of whoever scored the cue (server-side from scored_by).
+  // Display-only; used in the receipt's "Scored {date} · by {name}" line.
+  existingScoredByName: string | null
 }
 
 function fmtWhen(iso: string | null): string {
@@ -31,23 +37,39 @@ export default function BriefReceipt({
   fileTag,
   alreadyAcknowledged,
   existingNotes,
+  existingSignedName,
+  existingSignedInitials,
   acknowledgedAt,
+  existingScoredAt,
+  existingScoredByName,
 }: BriefReceiptProps) {
   const [acknowledged, setAcknowledged] = useState(alreadyAcknowledged)
-  const [name, setName] = useState('')
-  const [initials, setInitials] = useState('')
+  // Initials and name persist across reloads now. If a prior acknowledge
+  // captured a signature, those values seed the inputs and the stamp.
+  const [name, setName] = useState(existingSignedName ?? '')
+  const [initials, setInitials] = useState(existingSignedInitials ?? '')
   const [whenText, setWhenText] = useState(fmtWhen(acknowledgedAt))
   const [note, setNote] = useState('')
   const [noteSent, setNoteSent] = useState(Boolean(existingNotes?.trim()))
   const [sentAt, setSentAt] = useState(existingNotes?.trim() ? fmtWhen(acknowledgedAt) : '')
   const [savingAck, setSavingAck] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
+  // Scored — third receipt beat. The composer (or director) flips this when
+  // the actual music has been written and the brief is fulfilled.
+  const [scored, setScored] = useState(Boolean(existingScoredAt))
+  const [scoredAtText, setScoredAtText] = useState(fmtWhen(existingScoredAt))
+  const [scoredByName, setScoredByName] = useState<string | null>(existingScoredByName)
+  const [savingScore, setSavingScore] = useState(false)
 
   async function postAck(noteBody: string | null) {
     const res = await fetch(`/api/mock-cues/${cueId}/acknowledge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: noteBody }),
+      body: JSON.stringify({
+        notes: noteBody,
+        signed_name: name.trim() || null,
+        signed_initials: initials.trim() || null,
+      }),
     })
     if (!res.ok) {
       let msg = 'Could not save acknowledgement'
@@ -78,6 +100,52 @@ export default function BriefReceipt({
       toast.error(e instanceof Error ? e.message : 'Could not save acknowledgement')
     } finally {
       setSavingAck(false)
+    }
+  }
+
+  async function handleMarkScored() {
+    if (scored || savingScore) return
+    setSavingScore(true)
+    try {
+      const res = await fetch(`/api/mock-cues/${cueId}/score`, { method: 'POST' })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error || 'Could not mark scored.')
+      }
+      setScored(true)
+      setScoredAtText(
+        new Date().toLocaleString(undefined, {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        })
+      )
+      // Best-effort author name — the server records `scored_by`, but we
+      // don't know the viewer's display name from the public brief context.
+      // Show generic "you" until next reload pulls the resolved name.
+      if (!scoredByName) setScoredByName('you')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not mark scored.')
+    } finally {
+      setSavingScore(false)
+    }
+  }
+
+  async function handleUnscore() {
+    if (!scored || savingScore) return
+    setSavingScore(true)
+    try {
+      const res = await fetch(`/api/mock-cues/${cueId}/score`, { method: 'DELETE' })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error || 'Could not un-score.')
+      }
+      setScored(false)
+      setScoredAtText('')
+      setScoredByName(null)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not un-score.')
+    } finally {
+      setSavingScore(false)
     }
   }
 
@@ -210,6 +278,46 @@ export default function BriefReceipt({
             </>
           )}
         </div>
+      </div>
+
+      <div className={`bd-score${scored ? ' done' : ''}`}>
+        <div className="pre"><span className="glyph">♪</span>iii. Scored</div>
+        {scored ? (
+          <div className="scored-row">
+            <span className="lab">
+              <em>Score written.</em>
+              <small>
+                Marked as scored{scoredAtText ? ` ${scoredAtText}` : ''}
+                {scoredByName ? ` · by ${scoredByName}` : ''}.
+              </small>
+            </span>
+            <button
+              type="button"
+              className="unscore"
+              onClick={handleUnscore}
+              disabled={savingScore}
+            >
+              {savingScore ? '…' : 'Re-open'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="helper">
+              When the music for this cue is written and the brief is fulfilled, mark it scored. The director&rsquo;s binder shows it as done.
+            </p>
+            <div className="send-row">
+              <span>Records who, when</span>
+              <button
+                type="button"
+                className="send"
+                disabled={savingScore}
+                onClick={handleMarkScored}
+              >
+                {savingScore ? 'Marking…' : 'Mark as scored'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </section>
   )

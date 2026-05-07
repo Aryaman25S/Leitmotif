@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
   const bucket = parts[0]
   const filename = parts.slice(1).join('/')
 
-  if (bucket === 'scene-videos') {
+  // Both scene-videos and scene-posters are owned by a specific scene; the
+  // scene id is encoded as the prefix of the stored filename (`<sceneId>_<uid>.<ext>`).
+  if (bucket === 'scene-videos' || bucket === 'scene-posters') {
     const underscore = filename.indexOf('_')
     const sceneId = underscore === -1 ? '' : filename.slice(0, underscore)
     if (!sceneId) {

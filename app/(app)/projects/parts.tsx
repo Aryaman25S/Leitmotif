@@ -84,13 +84,11 @@ export function EmptyState() {
       </p>
       <div className={s['ll-empty-actions']}>
         <Link className={s['ll-btn-primary']} href="/projects/new">Begin a new production</Link>
-        <span className={s['ll-empty-or']}>or</span>
-        <Link className={s['ll-btn-quiet']} href="/sign-in">Accept an invitation</Link>
       </div>
       <div className={s['ll-empty-rule-bot']} />
       <div className={s['ll-empty-margin']}>
         <span className={s['ll-smallcaps']}>Footnote</span>
-        <p>If a director has invited you, the invitation arrives by email and lands here as your first programme.</p>
+        <p>If a director has invited you, the invitation arrives by email — open the link from there to take your seat.</p>
       </div>
     </section>
   )

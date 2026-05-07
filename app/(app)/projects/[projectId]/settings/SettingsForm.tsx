@@ -718,10 +718,11 @@ function runtimeHintLabel(raw: string, format: string): string | null {
   const m = n % 60
   const time = h > 0 ? `≈ ${h} h ${pad2(m)} m` : `≈ ${m} m`
   const tail =
-    format === 'feature'    ? 'feature cut' :
-    format === 'episodic'   ? 'episode cut' :
-    format === 'short'      ? 'short cut' :
-    format === 'commercial' ? 'commercial cut' :
+    format === 'feature'     ? 'feature cut' :
+    format === 'episodic'    ? 'episode cut' :
+    format === 'short'       ? 'short cut' :
+    format === 'commercial'  ? 'commercial cut' :
+    format === 'documentary' ? 'doc cut' :
     'cut'
   return `${time} · ${tail}`
 }

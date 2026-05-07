@@ -1,0 +1,81 @@
+/*
+ * Invite-specific bits layered on top of the shared messagePage chrome.
+ * The page card itself uses messagePage.module.css for the stage / rules /
+ * folio / title / body / footnote. This module only adds:
+ *   - the "Sent to {email} · Role {role}" eyebrow under the title
+ *   - the accept block (CTA + error line) below the body
+ */
+
+.eyebrowMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -10px 0 22px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.metaLabel {
+  color: var(--ink-3);
+}
+.metaValue {
+  color: var(--ink);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+}
+.metaSep {
+  color: var(--ink-4);
+}
+
+.acceptBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+.error {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--pencil, var(--ember));
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Match the shared messagePage chrome's primary button so the CTA reads as
+   the same vocabulary across all message pages. Doubled selector wins the
+   world's button reset. */
+.btnPrimary.btnPrimary {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--ember);
+  border: 0;
+  padding: 12px 22px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.btnPrimary.btnPrimary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ember) 86%, white 14%);
+}
+.btnPrimary.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

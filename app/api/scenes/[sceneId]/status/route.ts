@@ -31,8 +31,15 @@ export async function GET(
     model_provider: providerByJob[c.generation_job_id] ?? null,
   }))
 
+  // Surface the failure reason when a job has failed so the cue editor can
+  // show it instead of a silent dead-end. error_message is only meaningful
+  // when status is 'failed'; null otherwise.
+  const jobError =
+    latestJob?.status === 'failed' ? latestJob.error_message ?? null : null
+
   return NextResponse.json({
     jobStatus: latestJob?.status ?? null,
+    jobError,
     mockCues: cuesWithProvider,
   })
 }

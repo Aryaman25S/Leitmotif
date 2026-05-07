@@ -67,7 +67,6 @@ export interface ProjectMember {
   role_on_project: string
   invite_email: string | null
   magic_token: string | null
-  can_edit: boolean
   invited_at: string
   accepted_at: string | null
   profile?: { name: string | null; email: string } | null
@@ -85,6 +84,7 @@ export interface SceneCard {
   picture_version_label: string | null
   video_file_key: string | null
   video_duration_sec: number | null
+  poster_file_key: string | null
   status: string
   director_note: string | null
   screenplay_text: string | null
@@ -120,8 +120,6 @@ export interface IntentVersion {
   spec_rhythm: string | null
   spec_instrumentation: string | null
   spec_do_not_use: string[] | null
-  spec_confirmed_by: string | null
-  spec_confirmed_at: string | null
   created_at: string
   created_by: string | null
 }
@@ -158,6 +156,8 @@ export interface MockCue {
   composer_acknowledged: boolean
   composer_acknowledged_at: string | null
   composer_notes: string | null
+  composer_signed_name: string | null
+  composer_signed_initials: string | null
   scored_at: string | null
   scored_by: string | null
   created_at: string
@@ -191,6 +191,22 @@ function isoRequired(d: Date): string {
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
+
+/**
+ * Number of projects this profile owns. Used by `/projects/new` as the
+ * production-number preview ("No. 015") and the slate-suggestion suffix
+ * (e.g. "LL-2026-015"). Counts only owned projects, not memberships — the
+ * sequence is the director's own filmography, not the studio's catalog.
+ *
+ * Pure count; no schema column. The next-to-be-created production stamps
+ * `count + 1` at the moment the form is opened. If the director later
+ * deletes one of their projects, future previews will recycle the freed
+ * number — acceptable because this number is a slate-suggestion seed, not
+ * a stable identifier (the slate string is what's persisted).
+ */
+export async function getProjectCountForOwner(profileId: string): Promise<number> {
+  return prisma.project.count({ where: { owner_id: profileId } })
+}
 
 /** Projects the profile owns or is an accepted member of. */
 export async function getProjectsForProfile(profileId: string): Promise<Project[]> {
@@ -601,7 +617,6 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
     role_on_project: m.role_on_project,
     invite_email: m.invite_email,
     magic_token: m.magic_token,
-    can_edit: m.can_edit,
     invited_at: isoRequired(m.invited_at),
     accepted_at: iso(m.accepted_at),
     profile: m.profile ?? null,
@@ -693,6 +708,7 @@ export async function getStrikeManifest(projectId: string): Promise<StrikeManife
 export async function getProjectStorageKeys(projectId: string): Promise<{
   audio: string[]
   video: string[]
+  poster: string[]
 }> {
   const [mockCues, scenes] = await Promise.all([
     prisma.mockCue.findMany({
@@ -701,12 +717,13 @@ export async function getProjectStorageKeys(projectId: string): Promise<{
     }),
     prisma.sceneCard.findMany({
       where: { project_id: projectId },
-      select: { video_file_key: true },
+      select: { video_file_key: true, poster_file_key: true },
     }),
   ])
   return {
     audio: mockCues.map((m) => m.file_key).filter((k): k is string => Boolean(k)),
     video: scenes.map((s) => s.video_file_key).filter((k): k is string => Boolean(k)),
+    poster: scenes.map((s) => s.poster_file_key).filter((k): k is string => Boolean(k)),
   }
 }
 
@@ -720,7 +737,6 @@ export async function createProjectMember(
       invite_email: data.invite_email,
       role_on_project: data.role_on_project,
       magic_token: data.magic_token,
-      can_edit: data.can_edit,
       accepted_at: data.accepted_at ? new Date(data.accepted_at) : null,
     },
   })
@@ -731,7 +747,6 @@ export async function createProjectMember(
     role_on_project: m.role_on_project,
     invite_email: m.invite_email,
     magic_token: m.magic_token,
-    can_edit: m.can_edit,
     invited_at: isoRequired(m.invited_at),
     accepted_at: iso(m.accepted_at),
     profile: null,
@@ -1006,10 +1021,8 @@ export async function getReels(projectId: string): Promise<Reel[]> {
 
 /**
  * Append a new reel at the next cue_position. The default name is "Reel N"
- * to match the post-migration default; callers can pass a name through later
- * once a rename UI exists.
+ * to match the post-migration default; renameReel can change it later.
  */
-// TODO: rename-reel API + UI — pair with a PATCH /api/projects/[id]/reels/[reelId].
 export async function createReel(projectId: string, name?: string): Promise<Reel> {
   const last = await prisma.reel.findFirst({
     where: { project_id: projectId },
@@ -1031,7 +1044,84 @@ export async function createReel(projectId: string, name?: string): Promise<Reel
   }
 }
 
-// TODO: deleteReel + reorderReels — needs to handle scene reassignment.
+/**
+ * Rename a reel. Returns the updated row, or undefined if the reel doesn't
+ * exist (or doesn't belong to the project — caller should auth-check first).
+ * Empty / whitespace-only names fall back to the positional default
+ * "Reel N" so the rail never renders a blank header.
+ */
+export async function renameReel(
+  projectId: string,
+  reelId: string,
+  name: string,
+): Promise<Reel | undefined> {
+  try {
+    const reel = await prisma.reel.findFirst({
+      where: { id: reelId, project_id: projectId },
+    })
+    if (!reel) return undefined
+    const trimmed = name.trim() || `Reel ${reel.cue_position}`
+    const r = await prisma.reel.update({
+      where: { id: reelId },
+      data: { name: trimmed },
+    })
+    return {
+      ...r,
+      created_at: isoRequired(r.created_at),
+      updated_at: isoRequired(r.updated_at),
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Delete a reel and renumber subsequent reels' cue_position to close the gap.
+ * Returns:
+ *   - { ok: true } on successful delete
+ *   - { ok: false, code: 'has_scenes', sceneCount } when the reel still
+ *     contains scenes — caller should prompt to move them out first.
+ *   - { ok: false, code: 'last_reel' } when this is the project's only reel
+ *     (the binder invariant requires every project to have at least one).
+ *   - { ok: false, code: 'not_found' } if the reel doesn't exist.
+ *
+ * Renumbering happens in the same transaction as the delete so the
+ * (project_id, cue_position) unique constraint never sees inconsistent state.
+ */
+export async function deleteReel(
+  projectId: string,
+  reelId: string,
+): Promise<
+  | { ok: true }
+  | { ok: false; code: 'has_scenes'; sceneCount: number }
+  | { ok: false; code: 'last_reel' }
+  | { ok: false; code: 'not_found' }
+> {
+  const reel = await prisma.reel.findFirst({
+    where: { id: reelId, project_id: projectId },
+    select: { id: true, cue_position: true, _count: { select: { scene_cards: true } } },
+  })
+  if (!reel) return { ok: false, code: 'not_found' }
+  if (reel._count.scene_cards > 0) {
+    return { ok: false, code: 'has_scenes', sceneCount: reel._count.scene_cards }
+  }
+  const total = await prisma.reel.count({ where: { project_id: projectId } })
+  if (total <= 1) return { ok: false, code: 'last_reel' }
+
+  const removedPosition = reel.cue_position
+  // Bump-trick renumber: temporarily push everything at-or-after the removed
+  // position out of the unique-constraint range (negative offsets), then
+  // pull them back down by one. Two updates in a transaction so the unique
+  // constraint never sees colliding positions mid-flight.
+  await prisma.$transaction([
+    prisma.reel.delete({ where: { id: reelId } }),
+    prisma.reel.updateMany({
+      where: { project_id: projectId, cue_position: { gt: removedPosition } },
+      data: { cue_position: { decrement: 1 } },
+    }),
+  ])
+  return { ok: true }
+}
 
 // ── Scene Cards ───────────────────────────────────────────────────────────────
 
@@ -1064,6 +1154,7 @@ export async function createSceneCard(
       picture_version_label: data.picture_version_label,
       video_file_key: data.video_file_key,
       video_duration_sec: data.video_duration_sec,
+      poster_file_key: data.poster_file_key,
       status: data.status,
       director_note: data.director_note,
       screenplay_text: data.screenplay_text,
@@ -1090,6 +1181,7 @@ export async function updateSceneCard(
         picture_version_label: data.picture_version_label,
         video_file_key: data.video_file_key,
         video_duration_sec: data.video_duration_sec,
+        poster_file_key: data.poster_file_key,
         status: data.status,
         director_note: data.director_note,
         screenplay_text: data.screenplay_text,
@@ -1112,7 +1204,6 @@ export async function getLatestIntent(sceneCardId: string): Promise<IntentVersio
   return {
     ...iv,
     created_at: isoRequired(iv.created_at),
-    spec_confirmed_at: iso(iv.spec_confirmed_at),
   }
 }
 
@@ -1122,7 +1213,6 @@ export async function getIntent(id: string): Promise<IntentVersion | undefined> 
   return {
     ...iv,
     created_at: isoRequired(iv.created_at),
-    spec_confirmed_at: iso(iv.spec_confirmed_at),
   }
 }
 
@@ -1160,15 +1250,12 @@ export async function createIntentVersion(
       spec_rhythm: data.spec_rhythm,
       spec_instrumentation: data.spec_instrumentation,
       spec_do_not_use: data.spec_do_not_use ?? [],
-      spec_confirmed_by: data.spec_confirmed_by,
-      spec_confirmed_at: data.spec_confirmed_at ? new Date(data.spec_confirmed_at) : null,
       created_by: data.created_by,
     },
   })
   return {
     ...iv,
     created_at: isoRequired(iv.created_at),
-    spec_confirmed_at: iso(iv.spec_confirmed_at),
   }
 }
 
@@ -1297,6 +1384,8 @@ export async function createMockCue(
         ? new Date(data.composer_acknowledged_at)
         : null,
       composer_notes: data.composer_notes,
+      composer_signed_name: data.composer_signed_name,
+      composer_signed_initials: data.composer_signed_initials,
     },
   })
   return {
@@ -1328,6 +1417,13 @@ export async function updateMockCue(
             ? data.composer_acknowledged_at ? new Date(data.composer_acknowledged_at) : null
             : undefined,
         composer_notes: data.composer_notes,
+        composer_signed_name: data.composer_signed_name,
+        composer_signed_initials: data.composer_signed_initials,
+        scored_at:
+          data.scored_at !== undefined
+            ? data.scored_at ? new Date(data.scored_at) : null
+            : undefined,
+        scored_by: data.scored_by,
       },
     })
     return {
@@ -1353,15 +1449,59 @@ export async function deleteMockCue(id: string): Promise<boolean> {
 
 // ── Comments ──────────────────────────────────────────────────────────────────
 
-export async function getComments(sceneCardId: string): Promise<Comment[]> {
+export interface CommentsPage {
+  comments: Comment[]   // newest first within page
+  hasMore: boolean      // older entries exist beyond this page
+}
+
+/**
+ * Fetch a page of comments newest-first. `before` is a created_at cursor
+ * (ISO string); when provided, only entries strictly older than that
+ * timestamp are returned. The `hasMore` flag is computed by overfetching
+ * one extra row — saves a separate count query for paging.
+ */
+export async function getComments(
+  sceneCardId: string,
+  opts: { limit?: number; before?: string } = {}
+): Promise<CommentsPage> {
+  const limit = Math.max(1, Math.min(opts.limit ?? 10, 100))
   const rows = await prisma.comment.findMany({
-    where: { scene_card_id: sceneCardId },
-    orderBy: { created_at: 'asc' },
+    where: {
+      scene_card_id: sceneCardId,
+      ...(opts.before ? { created_at: { lt: new Date(opts.before) } } : {}),
+    },
+    orderBy: { created_at: 'desc' },
+    take: limit + 1,
   })
-  return rows.map((c) => ({
-    ...c,
-    created_at: isoRequired(c.created_at),
-  }))
+  const hasMore = rows.length > limit
+  const trimmed = hasMore ? rows.slice(0, limit) : rows
+
+  if (trimmed.length === 0) return { comments: [], hasMore: false }
+
+  // `Comment.author_id` is a free FK string (no Prisma relation declared on
+  // the model), so we resolve names in one batched lookup rather than N+1.
+  const authorIds = [...new Set(trimmed.map((r) => r.author_id).filter((x): x is string => !!x))]
+  const profiles = authorIds.length
+    ? await prisma.profile.findMany({
+        where: { id: { in: authorIds } },
+        select: { id: true, name: true, email: true },
+      })
+    : []
+  const byId = new Map(profiles.map((p) => [p.id, { name: p.name, email: p.email }]))
+
+  return {
+    comments: trimmed.map((c) => ({
+      ...c,
+      created_at: isoRequired(c.created_at),
+      author: c.author_id ? byId.get(c.author_id) ?? null : null,
+    })),
+    hasMore,
+  }
+}
+
+/** Total comment count for a scene — used for the section header counter. */
+export async function getCommentCount(sceneCardId: string): Promise<number> {
+  return prisma.comment.count({ where: { scene_card_id: sceneCardId } })
 }
 
 export async function createComment(

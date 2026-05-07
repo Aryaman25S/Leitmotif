@@ -81,6 +81,8 @@ export async function runGenerationJob(payload: GenerationJobPayload): Promise<v
       composer_acknowledged: false,
       composer_acknowledged_at: null,
       composer_notes: null,
+      composer_signed_name: null,
+      composer_signed_initials: null,
       scored_at: null,
       scored_by: null,
     })

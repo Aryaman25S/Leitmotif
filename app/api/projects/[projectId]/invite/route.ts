@@ -52,7 +52,6 @@ export async function POST(
     invite_email: email,
     role_on_project: role,
     magic_token: uid(),
-    can_edit: role !== 'viewer',
     accepted_at: null,
   })
 

@@ -19,7 +19,3 @@ export async function POST(
   const reel = await createReel(projectId, name)
   return NextResponse.json({ reel })
 }
-
-// TODO: PATCH (rename) and DELETE on /api/projects/[projectId]/reels/[reelId].
-// TODO: PATCH for cue_position reordering — needs a transactional swap so
-// unique (project_id, cue_position) holds throughout.

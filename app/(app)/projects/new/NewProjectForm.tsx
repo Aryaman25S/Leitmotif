@@ -63,9 +63,12 @@ const COUNT_WORDS = ['Zero names', 'One name', 'Two names', 'Three names', 'Four
 interface Props {
   ownerName: string
   ownerEmail: string
+  // Owner's next production number — `count(owner's projects) + 1`. Stamps
+  // the masthead "No." line and the slate-suggestion suffix.
+  nextProductionNumber: number
 }
 
-export default function NewProjectForm({ ownerName, ownerEmail }: Props) {
+export default function NewProjectForm({ ownerName, ownerEmail, nextProductionNumber }: Props) {
   const router = useRouter()
 
   // Field state ───────────────────────────────────────────────────────────────
@@ -88,7 +91,11 @@ export default function NewProjectForm({ ownerName, ownerEmail }: Props) {
   const trimmedTitle = title.trim()
   const titleLong = trimmedTitle.length >= 22
   const akaText = titleLong ? trimmedTitle.slice(0, 18) + '…' : ''
-  const slateSuggestion = useMemo(() => deriveSlate(trimmedTitle), [trimmedTitle])
+  const productionNumberStr = String(nextProductionNumber).padStart(3, '0')
+  const slateSuggestion = useMemo(
+    () => deriveSlate(trimmedTitle, productionNumberStr),
+    [trimmedTitle, productionNumberStr],
+  )
   // Match the design's input-vs-suggestion priority: once the user touches the
   // slate field (even just to clear it), the credit line stops echoing the
   // auto-derived suggestion and reflects only what was typed.
@@ -202,7 +209,7 @@ export default function NewProjectForm({ ownerName, ownerEmail }: Props) {
           <div />
           <div className={s.tpRuleTopC}>
             Leitmotif <span className={s.orn} /> Order of Production <span className={s.orn} />{' '}
-            No. <span className={s.tpRuleTopPending}>pending</span>
+            No. <span className={s.tpRuleTopPending}>{productionNumberStr}</span>
           </div>
           <div />
         </div>
@@ -299,7 +306,11 @@ export default function NewProjectForm({ ownerName, ownerEmail }: Props) {
             id="f-slate"
             className={`${s.fieldInput} ${s.mono}`}
             type="text"
-            placeholder={slateTouched ? 'LL-2026-014' : (slateSuggestion || 'LL-2026-014')}
+            placeholder={
+              slateTouched
+                ? `LL-${new Date().getFullYear()}-${productionNumberStr}`
+                : (slateSuggestion || `LL-${new Date().getFullYear()}-${productionNumberStr}`)
+            }
             value={slate}
             onChange={(e) => {
               setSlateTouched(true)
@@ -522,7 +533,7 @@ function cryptoKey(): string {
   return Math.random().toString(36).slice(2)
 }
 
-function deriveSlate(title: string): string {
+function deriveSlate(title: string, seq: string): string {
   const t = title.trim()
   if (!t) return ''
   const words = t.split(/\s+/).filter((w) => /[A-Za-z]/.test(w))
@@ -530,7 +541,6 @@ function deriveSlate(title: string): string {
     .slice(0, 3)
     .map((w) => w.replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase())
     .join('')
-  const seq = '014'
   const yr = new Date().getFullYear()
   return `${initials || 'XX'}-${yr}-${seq}`
 }

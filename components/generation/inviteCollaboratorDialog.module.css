@@ -1,0 +1,59 @@
+/*
+ * Invite-collaborator dialog — only the bits unique to this form. Scrim,
+ * panel, head, form, foot, and base field styles all live in the shared
+ * `dialogShell.module.css`. This module just adds the role-chip selector
+ * and char-count hint.
+ */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.chip.chip {
+  position: relative;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  z-index: 0;
+}
+.chip.chip:hover {
+  color: var(--ink-2);
+}
+.chip.chip:focus-visible {
+  outline: 1px dotted var(--ember);
+  outline-offset: 2px;
+}
+.chipOn {
+  color: var(--ink) !important;
+}
+/* Hand-pulled ember marker behind the active chip — same vocabulary as the
+   atmosphere chip selection in the cue editor. */
+.chipOn::before {
+  content: '';
+  position: absolute;
+  inset: 1px -2px;
+  background: color-mix(in oklab, var(--ember) 32%, transparent);
+  transform: skewX(-8deg);
+  z-index: -1;
+}
+.chipOn:hover::before {
+  background: color-mix(in oklab, var(--ember) 42%, transparent);
+}
+
+.charsLeft {
+  margin: -6px 0 0 124px;  /* aligns under the textarea (label gutter + gap) */
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 560px) {
+  .charsLeft { margin-left: 0; }
+}

@@ -25,7 +25,9 @@ export async function DELETE(
   // "reference recordings" are destroyed; this is what makes that promise
   // honest. Storage deletes run after commit so a partial S3 failure can't
   // strand DB rows pointing at vanished keys.
-  let keys: { audio: string[]; video: string[] } = { audio: [], video: [] }
+  let keys: { audio: string[]; video: string[]; poster: string[] } = {
+    audio: [], video: [], poster: [],
+  }
   try {
     keys = await getProjectStorageKeys(projectId)
   } catch (err) {
@@ -41,7 +43,7 @@ export async function DELETE(
   // Best-effort: orphan storage objects log but don't block the response.
   // The "—  STRIKE THE PRODUCTION  —" experience already committed.
   await Promise.allSettled(
-    [...keys.audio, ...keys.video].map((k) =>
+    [...keys.audio, ...keys.video, ...keys.poster].map((k) =>
       deleteStorageObject(k).catch((err) => {
         console.warn('[strike] storage delete failed for', k, err)
       })

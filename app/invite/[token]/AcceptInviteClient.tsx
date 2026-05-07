@@ -1,11 +1,16 @@
 'use client'
 
+/*
+ * Accept-invite action — editorial register, no shadcn primitives. Mirrors
+ * the messagePage chrome's button vocabulary (ember CTA, dotted-underline
+ * quiet link). Posts to /api/invite/accept; redirects to /projects/[id] on
+ * success; surfaces a sign-in prompt when the API returns 401.
+ */
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { Loader2 } from 'lucide-react'
+import s from './invite.module.css'
 
 export default function AcceptInviteClient({
   token,
@@ -30,10 +35,10 @@ export default function AcceptInviteClient({
     setLoading(false)
     if (!res.ok) {
       if (res.status === 401) {
-        setError('Please sign in to accept this invite.')
+        setError('Sign in first to take your seat.')
         return
       }
-      setError(data.error ?? 'Could not accept invite')
+      setError(data.error ?? 'Could not accept invite.')
       return
     }
     if (data.projectId) {
@@ -43,26 +48,31 @@ export default function AcceptInviteClient({
   }
 
   const signInHref = `/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`
+  const needsSignIn = error?.toLowerCase().includes('sign in')
 
   return (
-    <div className="space-y-4">
+    <div className={s.acceptBlock}>
       {error && (
-        <div className="space-y-2">
-          <p className="text-sm text-destructive">{error}</p>
-          {error.includes('sign in') ? (
-            <Link href={signInHref} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}>
-              Sign in
-            </Link>
-          ) : null}
-        </div>
+        <p className={s.error}>
+          <em>{error}</em>
+        </p>
       )}
-      <Button onClick={handleAccept} disabled={loading} className="w-full sm:w-auto gap-2">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Join &ldquo;{projectTitle}&rdquo;
-      </Button>
-      <p className="text-xs text-muted-foreground">
-        You must be signed in with your Leitmotif account to join this project.
-      </p>
+      <div className={s.actions}>
+        {needsSignIn ? (
+          <Link href={signInHref} className={`${s.btnPrimary} ${s.btnPrimary}`}>
+            Sign in to accept
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className={`${s.btnPrimary} ${s.btnPrimary}`}
+            onClick={handleAccept}
+            disabled={loading}
+          >
+            {loading ? 'Joining…' : `Take your seat in "${projectTitle}"`}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

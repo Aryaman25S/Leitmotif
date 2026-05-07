@@ -28,7 +28,13 @@ export async function POST(req: NextRequest) {
   if (denied) return denied
 
   const ext = path.extname(fileName).toLowerCase() || '.bin'
-  const bucket = contentType.startsWith('video/') ? 'scene-videos' : 'mock-cues'
+  // Bucket by content-type family. Images go to scene-posters (frame-grabs
+  // from the video clip via the cue editor's "Strip frame" affordance).
+  const bucket = contentType.startsWith('video/')
+    ? 'scene-videos'
+    : contentType.startsWith('image/')
+    ? 'scene-posters'
+    : 'mock-cues'
   const storedName = `${sceneId}_${uid()}${ext}`
   const fileKey = `${bucket}/${storedName}`
 

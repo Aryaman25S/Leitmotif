@@ -142,6 +142,16 @@ export default async function BriefPage({
       })
     : null
 
+  // Whoever marked the cue as scored — surfaced in the receipt's score
+  // panel as "Scored {date} · by {name}".
+  const scorer = cue.scored_by
+    ? await prisma.profile.findUnique({
+        where: { id: cue.scored_by },
+        select: { name: true, email: true },
+      })
+    : null
+  const scoredByDisplay = scorer?.name?.trim() || scorer?.email?.split('@')[0] || null
+
   // Find a designated composer (or sound designer) project member for the
   // "To" addressing. Anonymous public viewers see the generic line.
   const composerMember = project
@@ -168,6 +178,10 @@ export default async function BriefPage({
   const audioUrl = getFileUrl(cue.file_key)
   const videoUrl = scene?.video_file_key ? getFileUrl(scene.video_file_key) : null
   const isVideo = Boolean(videoUrl && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(videoUrl))
+  // Poster takes precedence over the placeholder when no video is set; when
+  // both exist, the video stays primary and the poster falls in via `<video
+  // poster=…>` so the first frame paints instantly even on slow networks.
+  const posterUrl = scene?.poster_file_key ? getFileUrl(scene.poster_file_key) : null
 
   const productionAcronym = projectAcronym(project?.title)
   const cueRefShort = scene?.cue_number?.trim() || `v${cue.version_number}`
@@ -285,13 +299,23 @@ export default async function BriefPage({
                 <div className="perf-strip left" aria-hidden />
                 <div className="perf-strip right" aria-hidden />
                 {videoUrl && isVideo ? (
-                  <video src={videoUrl} muted playsInline preload="metadata" />
+                  <video
+                    src={videoUrl}
+                    poster={posterUrl ?? undefined}
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
                 ) : videoUrl ? (
                   // Non-video upload (image / unknown) — render via <img>; falls back if it errors.
                   // Next/Image isn't used here because the file is served by /api/files and we don't
                   // want optimization on potentially-private cuts.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={videoUrl} alt={`Scene reference for cue ${cueRefShort}`} />
+                ) : posterUrl ? (
+                  // No video clip but a stripped frame exists — render it as the still reference.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={posterUrl} alt={`Scene reference for cue ${cueRefShort}`} />
                 ) : (
                   <div className="placeholder">
                     <div>
@@ -500,7 +524,11 @@ export default async function BriefPage({
               fileTag={fileTag.replace(/^Brief · /, '')}
               alreadyAcknowledged={cue.composer_acknowledged}
               existingNotes={cue.composer_notes}
+              existingSignedName={cue.composer_signed_name}
+              existingSignedInitials={cue.composer_signed_initials}
               acknowledgedAt={cue.composer_acknowledged_at}
+              existingScoredAt={cue.scored_at}
+              existingScoredByName={scoredByDisplay}
             />
 
             <div className="bd-colophon">

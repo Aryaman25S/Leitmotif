@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import type { BinderData, BinderReel, BinderScene } from '@/lib/store'
 import AddCueDialog from '@/components/generation/AddCueDialog'
 import AddReelDialog from '@/components/generation/AddReelDialog'
+import InviteCollaboratorDialog from '@/components/generation/InviteCollaboratorDialog'
 import {
   STATUS_META,
   autoMarginNote,
@@ -60,6 +63,7 @@ export default function ProjectBinder(props: ProjectBinderProps) {
   // Dialog state — `addCueReelId` opens the cue dialog scoped to a specific reel.
   const [addCueReelId, setAddCueReelId] = useState<string | null>(null)
   const [addReelOpen, setAddReelOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   // Approval count is what drives "for your eye" prominence — only directors
   // and music supervisors can act on it; everyone else sees "with composer"
@@ -81,11 +85,13 @@ export default function ProjectBinder(props: ProjectBinderProps) {
   return (
     <div className={s.body}>
       <ReelRail
+        projectId={projectId}
         reels={reelsWithScenes}
         activeReel={activeReel}
         onSelect={setActiveReel}
         canDirect={canDirect}
         onAddReel={() => setAddReelOpen(true)}
+        onInvite={() => setInviteOpen(true)}
         owner={{ name: ownerName, email: ownerEmail }}
         viewerEmail={props.viewer.email}
         members={members}
@@ -141,6 +147,12 @@ export default function ProjectBinder(props: ProjectBinderProps) {
         open={addReelOpen}
         onOpenChange={setAddReelOpen}
       />
+
+      <InviteCollaboratorDialog
+        projectId={projectId}
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+      />
     </div>
   )
 }
@@ -148,14 +160,16 @@ export default function ProjectBinder(props: ProjectBinderProps) {
 // ——————————————————————————————————————————
 
 function ReelRail({
-  reels, activeReel, onSelect, canDirect, onAddReel,
+  projectId, reels, activeReel, onSelect, canDirect, onAddReel, onInvite,
   owner, viewerEmail, members,
 }: {
+  projectId: string
   reels: BinderReel[]
   activeReel: string | null
   onSelect: (id: string) => void
   canDirect: boolean
   onAddReel: () => void
+  onInvite: () => void
   owner: { name: string | null; email: string }
   viewerEmail: string
   members: CollaboratorMember[]
@@ -166,28 +180,16 @@ function ReelRail({
         <span className={s.smallcaps}>Reels</span>
       </div>
       <ol className={s.railList}>
-        {reels.map((r) => {
-          const display = reelDisplayName(r.name, r.cue_position)
-          const attn = reelAttentionCount(r.scenes)
-          const active = activeReel === r.id
-          const range = reelSmpteRange(r.scenes)
-          return (
-            <li key={r.id} className={`${s.railItem} ${active ? s.isActive : ''}`}>
-              <button onClick={() => onSelect(r.id)} type="button">
-                <span className={s.railMark}>{active ? '—' : '·'}</span>
-                <span className={s.railBody}>
-                  <span className={s.railNum}>{display.positional}</span>
-                  {display.subtitle && <span className={s.railSub}>{display.subtitle}</span>}
-                  {range && <span className={s.railSmpte}>{range}</span>}
-                </span>
-                <span className={s.railCount}>
-                  {String(r.scenes.length).padStart(2, '0')}
-                  {attn > 0 && <span className={s.railAttn}> · {attn}●</span>}
-                </span>
-              </button>
-            </li>
-          )
-        })}
+        {reels.map((r) => (
+          <ReelItem
+            key={r.id}
+            projectId={projectId}
+            reel={r}
+            active={activeReel === r.id}
+            canDirect={canDirect}
+            onSelect={onSelect}
+          />
+        ))}
       </ol>
       {canDirect && (
         <div className={s.railFoot}>
@@ -197,19 +199,186 @@ function ReelRail({
           </button>
         </div>
       )}
-      {/* TODO: reel reordering, renaming, deletion — handled at the rail level. */}
-
-      <CollaboratorsPanel owner={owner} viewerEmail={viewerEmail} members={members} />
+      <CollaboratorsPanel
+        owner={owner}
+        viewerEmail={viewerEmail}
+        members={members}
+        canInvite={canDirect}
+        onInvite={onInvite}
+      />
     </nav>
   )
 }
 
+// One row in the rail. Wraps the existing select-button with a hover-revealed
+// strip of director-only controls: rename (✎) and delete (×). Edit/confirm
+// state lives per-row so multiple reels don't share confirm timeouts.
+function ReelItem({
+  projectId, reel, active, canDirect, onSelect,
+}: {
+  projectId: string
+  reel: BinderReel
+  active: boolean
+  canDirect: boolean
+  onSelect: (id: string) => void
+}) {
+  const router = useRouter()
+  const display = reelDisplayName(reel.name, reel.cue_position)
+  const attn = reelAttentionCount(reel.scenes)
+  const range = reelSmpteRange(reel.scenes)
+
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(reel.name)
+  const [renaming, setRenaming] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const confirmTimeoutRef = useRef<number | null>(null)
+
+  // Auto-revert delete confirm after 3s if the user doesn't follow through.
+  useEffect(() => {
+    if (!confirmingDelete) return
+    confirmTimeoutRef.current = window.setTimeout(() => setConfirmingDelete(false), 3000)
+    return () => {
+      if (confirmTimeoutRef.current) window.clearTimeout(confirmTimeoutRef.current)
+    }
+  }, [confirmingDelete])
+
+  // Focus + select-all when the rename input mounts.
+  useEffect(() => {
+    if (editing && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [editing])
+
+  function startRename(e: React.MouseEvent) {
+    e.stopPropagation()
+    setDraft(reel.name)
+    setEditing(true)
+  }
+
+  async function commitRename() {
+    const next = draft.trim()
+    setEditing(false)
+    if (next === reel.name.trim() || !next) return
+    setRenaming(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/reels/${reel.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: next }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        toast.error(data.error || 'Could not rename reel.')
+        return
+      }
+      router.refresh()
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  function cancelRename() {
+    setEditing(false)
+    setDraft(reel.name)
+  }
+
+  async function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirmingDelete) {
+      setConfirmingDelete(true)
+      return
+    }
+    if (confirmTimeoutRef.current) window.clearTimeout(confirmTimeoutRef.current)
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/reels/${reel.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        toast.error(data.error || 'Could not delete reel.')
+        setConfirmingDelete(false)
+        return
+      }
+      router.refresh()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <li className={`${s.railItem} ${active ? s.isActive : ''}`}>
+      <button onClick={() => !editing && onSelect(reel.id)} type="button">
+        <span className={s.railMark}>{active ? '—' : '·'}</span>
+        <span className={s.railBody}>
+          {editing ? (
+            <input
+              ref={renameInputRef}
+              className={`${s.railRenameInput} ${s.railRenameInput}`}
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                e.stopPropagation()
+                if (e.key === 'Enter') { e.preventDefault(); commitRename() }
+                else if (e.key === 'Escape') { e.preventDefault(); cancelRename() }
+              }}
+              maxLength={60}
+              disabled={renaming}
+            />
+          ) : (
+            <>
+              <span className={s.railNum}>{display.positional}</span>
+              {display.subtitle && <span className={s.railSub}>{display.subtitle}</span>}
+              {range && <span className={s.railSmpte}>{range}</span>}
+            </>
+          )}
+        </span>
+        <span className={s.railCount}>
+          {String(reel.scenes.length).padStart(2, '0')}
+          {attn > 0 && <span className={s.railAttn}> · {attn}●</span>}
+        </span>
+      </button>
+      {canDirect && !editing && (
+        <span className={s.railControls} aria-label="Reel controls">
+          <button
+            type="button"
+            className={`${s.railCtl} ${s.railCtl}`}
+            onClick={startRename}
+            title="Rename"
+            aria-label="Rename reel"
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            className={`${s.railCtl} ${s.railCtl} ${confirmingDelete ? s.railCtlDanger : ''}`}
+            onClick={handleDeleteClick}
+            disabled={deleting}
+            title={confirmingDelete ? 'Click again to delete' : 'Delete reel'}
+            aria-label={confirmingDelete ? 'Confirm delete' : 'Delete reel'}
+          >
+            {confirmingDelete ? 'delete?' : '×'}
+          </button>
+        </span>
+      )}
+    </li>
+  )
+}
+
 function CollaboratorsPanel({
-  owner, viewerEmail, members,
+  owner, viewerEmail, members, canInvite, onInvite,
 }: {
   owner: { name: string | null; email: string }
   viewerEmail: string
   members: CollaboratorMember[]
+  canInvite: boolean
+  onInvite: () => void
 }) {
   return (
     <div className={s.railCollab}>
@@ -241,10 +410,11 @@ function CollaboratorsPanel({
           )
         })}
       </ul>
-      {/* TODO: build the invite-collaborator flow on this page. Project settings already
-          has it; this rail entry should open a focused invite picker without leaving
-          the binder. */}
-      <span className={s.collabAdd}>+ Invite a collaborator</span>
+      {canInvite && (
+        <button type="button" className={`${s.collabAdd} ${s.collabAdd}`} onClick={onInvite}>
+          + Invite a collaborator
+        </button>
+      )}
     </div>
   )
 }

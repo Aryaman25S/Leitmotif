@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { getSessionProfile } from '@/lib/session'
+import { getProjectCountForOwner } from '@/lib/store'
 import { LeitmotifWorld } from '@/components/landing/LeitmotifWorld'
 import { Masthead } from '../[projectId]/parts'
 import NewProjectForm from './NewProjectForm'
@@ -18,6 +19,8 @@ export default async function NewProjectPage() {
 
   const now = new Date()
   const user = { name: profile.name, email: profile.email }
+  const ownedCount = await getProjectCountForOwner(profile.id)
+  const nextProductionNumber = ownedCount + 1
 
   return (
     <LeitmotifWorld>
@@ -25,6 +28,7 @@ export default async function NewProjectPage() {
       <NewProjectForm
         ownerName={profile.name?.trim() || profile.email}
         ownerEmail={profile.email}
+        nextProductionNumber={nextProductionNumber}
       />
     </LeitmotifWorld>
   )

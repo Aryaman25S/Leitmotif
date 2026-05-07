@@ -8,8 +8,7 @@
  * via /api/scenes/[sceneId]/generate; approval via /api/mock-cues/[id]/approve.
  *
  * Slate fields (cue_number, tc_in, tc_out, label) are read-only in this v1
- * port; restoring inline edit is a Phase 2.5 follow-up. The existing
- * SceneMetaEditor in components/scene/ stays intact for that re-mount.
+ * port; restoring inline edit is a Phase 2.5 follow-up.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -18,8 +17,9 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { ATMOSPHERE_DESCRIPTORS, FUNCTION_DESCRIPTORS, DENSITY_PHRASES, KEY_SIGNATURES } from '@/lib/prompts/taxonomy'
 import { buildGenerationPrompt, buildMusicalSpec } from '@/lib/prompts/buildGenerationPrompt'
-import type { IntentVersion, MockCue, GenerationSettings } from '@/lib/store'
+import type { Comment, IntentVersion, MockCue, GenerationSettings } from '@/lib/store'
 import type { AutofillField, AutofillResult } from '@/lib/ai/autofillFromScreenplay'
+import MarginNotes from '@/components/comments/MarginNotes'
 import s from './editor.module.css'
 
 // ── Constants — design vocabulary ────────────────────────────────────────────
@@ -127,6 +127,7 @@ interface SceneEditorProps {
   initialMockCues: MockCueWithProvider[]
   initialJobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   initialJobStartedAt: string | null
+  initialJobError: string | null
   genSettings: GenerationSettings | null
   toneBrief: string | null
   defaultModelProvider: string
@@ -135,6 +136,9 @@ interface SceneEditorProps {
   recipients: string                  // "Ana Reyes (composer) & Lin Park (music supervisor)" — pre-formatted
   appUrl: string                      // origin for /brief/<id>
   intentVersionsCount: number         // for "intent v18"
+  initialComments: Comment[]          // server-rendered initial page (newest first)
+  initialCommentsHasMore: boolean     // older entries exist beyond this page
+  initialCommentTotal: number         // for "MARGIN NOTES … 13" header counter
 }
 
 // ── Top-level ────────────────────────────────────────────────────────────────
@@ -146,6 +150,7 @@ export default function SceneEditor(props: SceneEditorProps) {
   const [intent, setIntent] = useState<IntentVersion | null>(props.initialIntent)
   const [mockCues, setMockCues] = useState<MockCueWithProvider[]>(props.initialMockCues)
   const [jobStatus, setJobStatus] = useState(props.initialJobStatus)
+  const [jobError, setJobError] = useState<string | null>(props.initialJobError)
   const [jobStartedAt] = useState(props.initialJobStartedAt)
 
   // Brief draft state — initialised from latest intent, edited locally.
@@ -161,6 +166,10 @@ export default function SceneEditor(props: SceneEditorProps) {
   const [bpm, setBpm] = useState<number | null>(intent?.target_bpm ?? null)
   const [keySig, setKeySig] = useState<string>(intent?.key_signature ?? '')
   const [instruments, setInstruments] = useState<string>(intent?.featured_instruments ?? '')
+  // Free-text production-quality hint that shapes the prompt ("warm mono,
+  // vinyl crackle" vs "clean stereo, modern hall"). Composer never sees it
+  // directly; it tunes the AI mock's character.
+  const [recordingQuality, setRecordingQuality] = useState<string>(intent?.recording_quality ?? '')
 
   // Screenplay text + autofill state. Lives on SceneCard (one screenplay per
   // scene, informs many intent versions). `savedScreenplay` is the persisted
@@ -182,8 +191,8 @@ export default function SceneEditor(props: SceneEditorProps) {
   // Pristine baseline used to detect "dirty" — recomputed when intent reloads.
   const baseline = useMemo(() => snapshotIntent(intent), [intent])
   const draft = useMemo(
-    () => ({ atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments }),
-    [atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments],
+    () => ({ atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments, recordingQuality }),
+    [atms, fn, balance, diegetic, recurrence, dens, words, wrong, formatTag, bpm, keySig, instruments, recordingQuality],
   )
   const dirty = useMemo(
     () => !sameSnapshot(baseline, draft) || screenplay !== savedScreenplay,
@@ -229,10 +238,10 @@ export default function SceneEditor(props: SceneEditorProps) {
     targetBpm: bpm,
     keySignature: keySig || null,
     featuredInstruments: instruments.trim() || null,
-    recordingQuality: intent?.recording_quality ?? null,
+    recordingQuality: recordingQuality.trim() || null,
     workingTitle: intent?.working_title ?? null,
     formatTag: formatTag || 'Band',
-  }), [atms, fn, balance, diegetic, recurrence, dens, wrong, words, intent, bpm, keySig, instruments, formatTag])
+  }), [atms, fn, balance, diegetic, recurrence, dens, wrong, words, bpm, keySig, instruments, formatTag, intent, recordingQuality])
 
   const musicalSpec = useMemo(() => buildMusicalSpec(intentInput), [intentInput])
   const promptPreview = useMemo(() => buildGenerationPrompt(intentInput, {
@@ -279,10 +288,12 @@ export default function SceneEditor(props: SceneEditorProps) {
         if (Array.isArray(data.mockCues)) setMockCues(data.mockCues)
         if (data.jobStatus === 'completed') {
           setGenerating(false)
+          setJobError(null)
           toast.success('Mock cue ready.')
           router.refresh()
         } else if (data.jobStatus === 'failed') {
           setGenerating(false)
+          setJobError(typeof data.jobError === 'string' ? data.jobError : null)
           toast.error('Generation failed.')
           router.refresh()
         }
@@ -358,8 +369,9 @@ export default function SceneEditor(props: SceneEditorProps) {
       apply('instruments',         !instruments.trim(), result.featured_instruments, setInstruments)
       apply("director's words",    !words.trim(), result.director_words, setWords)
       apply('what would be wrong', !wrong.trim(), result.what_would_be_wrong, setWrong)
-      // recording_quality and working_title are returned by the model but the
-      // editor doesn't surface them today — skip until they have UI.
+      apply('recording quality',   !recordingQuality.trim(), result.recording_quality, setRecordingQuality)
+      // working_title is returned by the model but the editor doesn't surface
+      // it; the brief sheet falls back to scene.label when unset.
 
       setLowConfidence(lows)
       toast.success(
@@ -411,7 +423,7 @@ export default function SceneEditor(props: SceneEditorProps) {
           target_bpm: bpm,
           key_signature: keySig || null,
           featured_instruments: instruments.trim() || null,
-          recording_quality: intent?.recording_quality ?? null,
+          recording_quality: recordingQuality.trim() || null,
           working_title: intent?.working_title ?? null,
           format_tag: formatTag || 'Band',
           positive_prompt: promptPreview.positivePrompt,
@@ -448,6 +460,9 @@ export default function SceneEditor(props: SceneEditorProps) {
     }
     setGenerating(true)
     setJobStatus('queued')
+    // Clear any prior failure so the result panel doesn't keep showing the
+    // last error while the new attempt is in flight.
+    setJobError(null)
     const res = await fetch(`/api/scenes/${sceneId}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -570,9 +585,7 @@ export default function SceneEditor(props: SceneEditorProps) {
             <span className={s.slateMetaPos}>{cuePositionStr} of {cueTotalStr}</span>
           </div>
           <h1 className={s.slateTitle}>{props.sceneLabel}</h1>
-          {/* TODO(Phase 2.5): restore inline edit for cue_number / tc_in / tc_out / label.
-              SceneMetaEditor (components/scene/SceneMetaEditor.tsx) is the existing
-              editor and remains intact for that re-mount. */}
+          {/* TODO(Phase 2.5): restore inline edit for cue_number / tc_in / tc_out / label. */}
         </div>
         <div className={s.slateR}>
           <span className={s.tc}>
@@ -698,6 +711,8 @@ export default function SceneEditor(props: SceneEditorProps) {
               onBpm={canDirect ? setBpm : noop}
               keySig={keySig} onKey={canDirect ? setKeySig : noop}
               instruments={instruments} onInstruments={canDirect ? setInstruments : noop}
+              recordingQuality={recordingQuality}
+              onRecordingQuality={canDirect ? setRecordingQuality : noop}
               readOnly={!canDirect}
             />
 
@@ -733,6 +748,8 @@ export default function SceneEditor(props: SceneEditorProps) {
             approvedCue={approvedCue}
             sceneTitle={props.sceneLabel}
             jobStartedAt={jobStartedAt}
+            jobError={jobError}
+            jobStatus={jobStatus}
             hasAtmospheres={atms.length > 0}
             onApprove={handleApprove}
             onUnapprove={handleUnapprove}
@@ -748,6 +765,14 @@ export default function SceneEditor(props: SceneEditorProps) {
             appUrl={props.appUrl}
             previousVersions={sortedCues.filter((c) => c.id !== (latestUnapproved?.id ?? approvedCue?.id))}
             modelProvider={props.defaultModelProvider}
+          />
+          <MarginNotes
+            sceneId={sceneId}
+            initialComments={props.initialComments}
+            initialCommentsHasMore={props.initialCommentsHasMore}
+            initialCommentTotal={props.initialCommentTotal}
+            canReply
+            fillHeight
           />
         </aside>
       </div>
@@ -803,11 +828,32 @@ function PicturePlate({
 }) {
   const hasClip = !!videoUrl
   const videoRef = useRef<HTMLVideoElement>(null)
+  const replaceInputRef = useRef<HTMLInputElement>(null)
   const [playing, setPlaying] = useState(false)
   const [currentSec, setCurrentSec] = useState(0)
   const [duration, setDuration] = useState(videoDurationSec ?? 0)
+  const [replacing, setReplacing] = useState(false)
+  const [stripping, setStripping] = useState(false)
 
   const pct = duration > 0 ? (currentSec / duration) * 100 : 0
+
+  async function handleReplaceFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setReplacing(true)
+    try {
+      const result = await uploadSceneVideo(sceneId, file)
+      if (!result.ok) {
+        toast.error(result.error ?? 'Replace failed.')
+        return
+      }
+      toast.success('Clip replaced.')
+      onUploaded()
+    } finally {
+      setReplacing(false)
+      if (replaceInputRef.current) replaceInputRef.current.value = ''
+    }
+  }
 
   function toggle() {
     const v = videoRef.current
@@ -822,6 +868,60 @@ function PicturePlate({
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     v.currentTime = ratio * duration
+  }
+
+  // Strip frame — capture the currently-paused frame, upload via the same
+  // presigned-PUT chain the video uses, then PATCH the scene's poster_file_key.
+  // Pauses the video first if it's playing so the captured frame matches what
+  // the director sees on screen.
+  async function handleStripFrame() {
+    const v = videoRef.current
+    if (!v || stripping) return
+    setStripping(true)
+    try {
+      if (!v.paused) v.pause()
+      // CORS / tainted-canvas guard: video must be served same-origin (we use
+      // /api/files/...) and have decoded enough to read pixels. If readyState
+      // is below HAVE_CURRENT_DATA, the canvas would be blank.
+      if (v.readyState < 2) {
+        toast.error('Wait for the video to load, then try again.')
+        return
+      }
+      const w = v.videoWidth
+      const h = v.videoHeight
+      if (!w || !h) {
+        toast.error('No frame available yet.')
+        return
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        toast.error('Could not capture the frame.')
+        return
+      }
+      ctx.drawImage(v, 0, 0, w, h)
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9),
+      )
+      if (!blob) {
+        toast.error('Could not encode the frame.')
+        return
+      }
+      const file = new File([blob], `frame_${Math.round(v.currentTime * 1000)}.jpg`, {
+        type: 'image/jpeg',
+      })
+      const result = await uploadScenePoster(sceneId, file)
+      if (!result.ok) {
+        toast.error(result.error ?? 'Could not save the frame.')
+        return
+      }
+      toast.success('Frame stripped.')
+      onUploaded()
+    } finally {
+      setStripping(false)
+    }
   }
 
   return (
@@ -906,12 +1006,36 @@ function PicturePlate({
           <div className={s.pictureFoot}>
             <span><span className={s.voiceStrokeInline} />Watch it loop while you write — keep it in the corner of your eye.</span>
             <span className={s.pictureFootR}>
-              {/* TODO(Phase 2.5): wire to /api/scenes/[sceneId]/video DELETE / replace flow,
-                  and to a frame-grab endpoint for Strip frame. */}
-              <a href="#">Replace clip</a>
-              {' · '}
-              <a href="#">Strip frame</a>
+              {canDirect ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => replaceInputRef.current?.click()}
+                    disabled={replacing || stripping}
+                  >
+                    {replacing ? 'replacing…' : 'Replace clip'}
+                  </button>
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={handleStripFrame}
+                    disabled={replacing || stripping}
+                    title="Capture the current frame as the cue's poster image"
+                  >
+                    {stripping ? 'stripping…' : 'Strip frame'}
+                  </button>
+                </>
+              ) : null}
             </span>
+            {canDirect && (
+              <input
+                ref={replaceInputRef}
+                type="file"
+                accept="video/mp4,video/quicktime,video/*"
+                style={{ display: 'none' }}
+                onChange={handleReplaceFile}
+              />
+            )}
           </div>
         )}
       </div>
@@ -934,18 +1058,17 @@ function PictureEmpty({
     if (!file) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch(`/api/scenes/${sceneId}/video`, { method: 'POST', body: fd })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        toast.error(data.error ?? 'Upload failed.')
+      const result = await uploadSceneVideo(sceneId, file)
+      if (!result.ok) {
+        toast.error(result.error ?? 'Upload failed.')
         return
       }
       toast.success('Clip attached.')
       onUploaded()
     } finally {
       setUploading(false)
+      // Reset so picking the same file again still fires onChange.
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -970,6 +1093,149 @@ function PictureEmpty({
       )}
     </div>
   )
+}
+
+// ── Scene-video upload pipeline ──────────────────────────────────────────────
+// Three-step flow that bypasses Vercel's 4.5 MB serverless body limit:
+//   1. POST /api/storage/upload     — get a presigned PUT URL (or multipart
+//      fallback when R2 isn't configured).
+//   2. PUT the file directly to R2  — the bytes never touch our serverless
+//      function.
+//   3. PATCH /api/scenes/[id]/video — record the file_key + probed duration;
+//      the route also cleans up any prior clip best-effort.
+
+interface UploadInit {
+  uploadMode: 'presigned'
+  putUrl: string
+  fileKey: string
+}
+interface UploadInitMultipart {
+  uploadMode: 'multipart'
+  uploadUrl: string
+  fileKey: string
+}
+
+async function uploadSceneVideo(
+  sceneId: string,
+  file: File,
+): Promise<{ ok: boolean; error?: string }> {
+  const clientDurationSec = await probeFileDuration(file)
+
+  const initRes = await fetch('/api/storage/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sceneId,
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+    }),
+  })
+  if (!initRes.ok) {
+    const data = (await initRes.json().catch(() => ({}))) as { error?: string }
+    return { ok: false, error: data.error ?? 'Could not start upload.' }
+  }
+  const init = (await initRes.json()) as UploadInit | UploadInitMultipart
+
+  if (init.uploadMode === 'presigned') {
+    const putRes = await fetch(init.putUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    })
+    if (!putRes.ok) return { ok: false, error: 'Upload to storage failed.' }
+  } else {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('fileKey', init.fileKey)
+    const cmRes = await fetch(init.uploadUrl, { method: 'POST', body: fd })
+    if (!cmRes.ok) {
+      const data = (await cmRes.json().catch(() => ({}))) as { error?: string }
+      return { ok: false, error: data.error ?? 'Upload failed.' }
+    }
+  }
+
+  const patchRes = await fetch(`/api/scenes/${sceneId}/video`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileKey: init.fileKey, durationSec: clientDurationSec }),
+  })
+  if (!patchRes.ok) {
+    const data = (await patchRes.json().catch(() => ({}))) as { error?: string }
+    return { ok: false, error: data.error ?? 'Could not attach clip.' }
+  }
+
+  return { ok: true }
+}
+
+// Three-step upload for a poster image, mirrors uploadSceneVideo: init →
+// PUT bytes → PATCH the scene's poster_file_key. The init route's image
+// content-type bucketing routes the file to the scene-posters bucket.
+async function uploadScenePoster(
+  sceneId: string,
+  file: File,
+): Promise<{ ok: boolean; error?: string }> {
+  const initRes = await fetch('/api/storage/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sceneId,
+      fileName: file.name,
+      contentType: file.type || 'image/jpeg',
+    }),
+  })
+  if (!initRes.ok) {
+    const data = (await initRes.json().catch(() => ({}))) as { error?: string }
+    return { ok: false, error: data.error ?? 'Could not start upload.' }
+  }
+  const init = (await initRes.json()) as UploadInit | UploadInitMultipart
+
+  if (init.uploadMode === 'presigned') {
+    const putRes = await fetch(init.putUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    })
+    if (!putRes.ok) return { ok: false, error: 'Upload to storage failed.' }
+  } else {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('fileKey', init.fileKey)
+    const cmRes = await fetch(init.uploadUrl, { method: 'POST', body: fd })
+    if (!cmRes.ok) {
+      const data = (await cmRes.json().catch(() => ({}))) as { error?: string }
+      return { ok: false, error: data.error ?? 'Upload failed.' }
+    }
+  }
+
+  const patchRes = await fetch(`/api/scenes/${sceneId}/poster`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileKey: init.fileKey }),
+  })
+  if (!patchRes.ok) {
+    const data = (await patchRes.json().catch(() => ({}))) as { error?: string }
+    return { ok: false, error: data.error ?? 'Could not save the frame.' }
+  }
+
+  return { ok: true }
+}
+
+// Best-effort: probe duration via a temporary <video> element. Returns null on
+// any failure (unsupported container, corrupt file, etc.) — the route also
+// re-probes server-side, so a null here doesn't strand the duration.
+function probeFileDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const v = document.createElement('video')
+    v.preload = 'metadata'
+    const cleanup = () => URL.revokeObjectURL(url)
+    v.onloadedmetadata = () => {
+      cleanup()
+      resolve(Number.isFinite(v.duration) && v.duration > 0 ? v.duration : null)
+    }
+    v.onerror = () => { cleanup(); resolve(null) }
+    v.src = url
+  })
 }
 
 // ── Brief fields ─────────────────────────────────────────────────────────────
@@ -1296,7 +1562,8 @@ function VoiceField({
 
 function SpecsField({
   format, onFormat, bpm, bpmIsAuto, onBpm,
-  keySig, onKey, instruments, onInstruments, readOnly,
+  keySig, onKey, instruments, onInstruments,
+  recordingQuality, onRecordingQuality, readOnly,
 }: {
   format: string
   onFormat: (v: string) => void
@@ -1307,6 +1574,8 @@ function SpecsField({
   onKey: (v: string) => void
   instruments: string
   onInstruments: (v: string) => void
+  recordingQuality: string
+  onRecordingQuality: (v: string) => void
   readOnly: boolean
 }) {
   const safeBpm = bpm ?? 80
@@ -1320,7 +1589,7 @@ function SpecsField({
         <span className={s.fieldNo}>vi.</span>
         <span className={s.fieldLabel}>Audio specifications</span>
         <span className={s.fieldRule} />
-        <span className={s.fieldHint}>format · BPM · key · instruments</span>
+        <span className={s.fieldHint}>format · BPM · key · instruments · quality</span>
       </div>
       <div className={s.knobs}>
         <div>
@@ -1405,6 +1674,17 @@ function SpecsField({
             value={instruments}
             onChange={(e) => onInstruments(e.target.value)}
             placeholder="none specified"
+            disabled={readOnly}
+          />
+        </div>
+        <div>
+          <div className={s.knobCap}>Recording quality</div>
+          <input
+            className={s.knobInput}
+            type="text"
+            value={recordingQuality}
+            onChange={(e) => onRecordingQuality(e.target.value)}
+            placeholder="modern hi-fi"
             disabled={readOnly}
           />
         </div>
@@ -1503,6 +1783,8 @@ function ResultPanel(props: {
   approvedCue: MockCueWithProvider | null
   sceneTitle: string
   jobStartedAt: string | null
+  jobError: string | null
+  jobStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | null
   hasAtmospheres: boolean
   onApprove: () => Promise<unknown>
   onUnapprove: () => Promise<unknown>
@@ -1529,6 +1811,18 @@ function ResultPanel(props: {
   }
   if (props.state === 'generating') {
     return <ResultGenerating jobStartedAt={props.jobStartedAt} />
+  }
+  // Show the failure beat when the most recent job ended in failure and
+  // there's no current cue to fall back on. Director can retry or just keep
+  // editing the brief — the next generate clears the error.
+  if (props.jobStatus === 'failed' && !props.latest && !props.approvedCue) {
+    return (
+      <ResultFailed
+        message={props.jobError}
+        canRetry={props.canDirect && props.hasAtmospheres}
+        onRetry={props.onGenerate}
+      />
+    )
   }
   if (props.state === 'approved' && props.approvedCue) {
     return (
@@ -1605,6 +1899,54 @@ function ResultEmpty({
         </button>
         <p className={s.resultEmptyAttr}>~ 30 to 90 seconds</p>
       </div>
+    </section>
+  )
+}
+
+// Failed-job beat. Shows when the most recent generation ended in failure
+// and there's no current cue to fall back on. Surfaces the actual
+// error_message from runGenerationJob so the director can see WHY it
+// failed (rate limit, missing key, prompt rejection, etc.) rather than
+// staring at a silent dead-end.
+function ResultFailed({
+  message, canRetry, onRetry,
+}: {
+  message: string | null
+  canRetry: boolean
+  onRetry: () => Promise<unknown> | void
+}) {
+  return (
+    <section className={`${s.result} ${s.resultFailed}`}>
+      <div className={s.resultHead}>
+        <span className={s.resultEyebrow}>II · Misprint</span>
+        <span />
+        <span className={s.resultVersion}>generation failed</span>
+      </div>
+      <div className={s.resultFailedBody}>
+        <p className={s.resultFailedTitle}>
+          <em>The cue didn&rsquo;t come back.</em>
+        </p>
+        {message && (
+          <p className={s.resultFailedMsg}>
+            <span className={s.resultFailedLabel}>Reason</span>
+            <span className={s.resultFailedReason}>{message}</span>
+          </p>
+        )}
+        <p className={s.resultFailedHint}>
+          Try again, or adjust the brief and re-run. The auto-mock falls back to a silent reference if the provider is unavailable.
+        </p>
+      </div>
+      {canRetry && (
+        <div className={s.resultFailedFoot}>
+          <button
+            type="button"
+            className={`${s.btnGenerate} ${s.btnGenerate}`}
+            onClick={() => onRetry()}
+          >
+            ◐ Try again
+          </button>
+        </div>
+      )}
     </section>
   )
 }
@@ -2226,6 +2568,7 @@ function snapshotIntent(iv: IntentVersion | null) {
     bpm: iv?.target_bpm ?? null,
     keySig: iv?.key_signature ?? '',
     instruments: iv?.featured_instruments ?? '',
+    recordingQuality: iv?.recording_quality ?? '',
   }
 }
 type Snapshot = ReturnType<typeof snapshotIntent>
@@ -2242,6 +2585,7 @@ function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
     a.bpm === b.bpm &&
     a.keySig === b.keySig &&
     a.instruments === b.instruments &&
+    a.recordingQuality === b.recordingQuality &&
     a.atms.length === b.atms.length &&
     a.atms.every((x, i) => x === b.atms[i])
   )

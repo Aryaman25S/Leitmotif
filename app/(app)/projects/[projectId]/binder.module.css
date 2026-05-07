@@ -97,6 +97,11 @@
 /* ——— Reel rail ——— */
 .railCap { margin-bottom: 12px; }
 .railList { list-style: none; padding: 0; margin: 0; }
+.railItem {
+  position: relative;
+  border-bottom: 1px dotted var(--rule);
+}
+.railItem:last-child { border-bottom: 0; }
 .railItem button {
   width: 100%;
   display: grid;
@@ -106,13 +111,11 @@
   padding: 12px 0;
   text-align: left;
   border: 0;
-  border-bottom: 1px dotted var(--rule);
   background: none;
   cursor: pointer;
   color: inherit;
   font: inherit;
 }
-.railItem:last-child button { border-bottom: 0; }
 .railMark {
   font-family: var(--mono); font-size: 12px;
   color: var(--ink-3); line-height: 1;
@@ -140,6 +143,80 @@
 .isActive .railSub { color: var(--ink-2); }
 .isActive .railCount { color: var(--ember); }
 .railItem button:hover .railNum { color: var(--ink); }
+
+/* Per-row director controls — hover-revealed strip overlaid on the right
+   edge of the row. Absolute positioning keeps the controls out of the row's
+   layout flow so the cue-count column on the right edge isn't squeezed
+   when the controls aren't visible. On hover, the controls overlay the
+   count area (with a `bg` background to mask it). Doubled selectors win
+   the world's `.leitmotif-world button` reset. */
+.railControls {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 4px 8px;
+  background: linear-gradient(to right, transparent 0, var(--bg) 12px, var(--bg));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.railItem:hover .railControls,
+.railItem:focus-within .railControls {
+  opacity: 1;
+  pointer-events: auto;
+}
+.railCtl.railCtl {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  padding: 6px 9px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 2px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.railCtl.railCtl:hover:not(:disabled) {
+  color: var(--ember);
+  background: color-mix(in oklab, var(--ember) 12%, transparent);
+}
+.railCtl.railCtl:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.railCtlDanger.railCtlDanger {
+  color: var(--pencil);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 9px;
+}
+.railCtlDanger.railCtlDanger:hover:not(:disabled) {
+  color: var(--pencil);
+  background: color-mix(in oklab, var(--pencil) 12%, transparent);
+}
+
+/* Inline rename input — replaces .railNum during editing. Italic serif on a
+   dotted-ember underline so the field clearly reads as "this is the rename
+   slot," not as a separate row. */
+.railRenameInput.railRenameInput {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted var(--ember);
+  padding: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink);
+  line-height: 1.1;
+  outline: none;
+}
 
 .railFoot { margin: 14px 0 22px; padding-top: 12px; border-top: 1px solid var(--rule); }
 .railAdd {
@@ -191,15 +268,21 @@
   letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
 }
 .collabMuted .collabName { color: var(--ink-3); }
-.collabAdd {
+/* Doubled selector beats the world's `.leitmotif-world button` reset (0,1,1)
+   which would otherwise clobber color, padding, etc. on this element. */
+.collabAdd.collabAdd {
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--ink-3);
   border-top: 1px dotted var(--rule);
-  padding-top: 12px;
+  padding: 12px 0 0;
   display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  cursor: pointer;
 }
-.collabAdd:hover { color: var(--ember); }
+.collabAdd.collabAdd:hover { color: var(--ember); }
 
 /* ——— Production head ——— */
 .head {

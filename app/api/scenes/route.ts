@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     picture_version_label: null,
     video_file_key: null,
     video_duration_sec: null,
+    poster_file_key: null,
     status: 'untagged',
     director_note: null,
     screenplay_text: null,

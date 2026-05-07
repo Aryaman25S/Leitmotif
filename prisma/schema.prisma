@@ -148,7 +148,6 @@ model ProjectMember {
   role_on_project String
   invite_email    String?
   magic_token     String?
-  can_edit        Boolean   @default(true)
   invited_at      DateTime  @default(now())
   accepted_at     DateTime?
 
@@ -168,6 +167,7 @@ model SceneCard {
   picture_version_label String?
   video_file_key        String?
   video_duration_sec    Float?
+  poster_file_key       String?
   status                String   @default("untagged")
   director_note         String?
   screenplay_text       String?
@@ -212,8 +212,6 @@ model IntentVersion {
   spec_rhythm             String?
   spec_instrumentation    String?
   spec_do_not_use         String[]
-  spec_confirmed_by       String?
-  spec_confirmed_at       DateTime?
   created_at              DateTime  @default(now())
   created_by              String?
 
@@ -258,6 +256,8 @@ model MockCue {
   composer_acknowledged    Boolean   @default(false)
   composer_acknowledged_at DateTime?
   composer_notes           String?
+  composer_signed_name     String?
+  composer_signed_initials String?
   scored_at                DateTime?
   scored_by                String?
   created_at               DateTime  @default(now())
